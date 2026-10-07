@@ -4,6 +4,7 @@
   let ultimoBanRival = null;
   let seleccionBan = null;
   let seleccionSitio = null; // índice del punto marcado antes de confirmarlo
+  let seleccionMapa = null;  // id del mapa marcado (veto o elección)
   let temporizadores = [];
   let alimentando = false;
   let enPausa = false;
@@ -132,7 +133,9 @@
 
   function entrar() {
     const st = ST();
-    if (st.fase === "fin" || !st.mapa) { P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; }
+    if (st.fase === "fin" || !st.mapasCandidatos || !st.mapasCandidatos.length) {
+      P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; seleccionMapa = null;
+    }
     render();
   }
 
@@ -143,7 +146,9 @@
     if (enPausa && fasePausada !== st.fase) { enPausa = false; fasePausada = null; }
     const cont = document.getElementById("partida-contenido");
     if (!cont) return;
-    if (st.fase === "mapa") cont.innerHTML = vistaMapa();
+    if (st.fase === "vetoMapa") cont.innerHTML = vistaVetoMapa();
+    else if (st.fase === "elegirMapa") cont.innerHTML = vistaElegirMapa();
+    else if (st.fase === "mapa") cont.innerHTML = vistaMapa();
     else if (st.fase === "sitio") cont.innerHTML = vistaSitio();
     else if (st.fase === "bans") cont.innerHTML = vistaBans();
     else if (st.fase === "draft") cont.innerHTML = vistaDraft();
@@ -172,6 +177,51 @@
     return `<p class="muted">Baneados en la partida: <strong>${st.vetados.map((id) => porId(id).nombre).join(" · ")}</strong></p>`;
   }
 
+  // ---------- VETO DE MAPA Y ELECCIÓN DE MAPA ----------
+  function tarjetaMapa(mapa, marcado, sello) {
+    return `<button class="mapa-card${marcado ? " seleccionado" : ""}" data-mapa="${mapa.id}" type="button">
+      <strong>🗺️ ${mapa.nombre}</strong>
+      <span class="mapa-desc">${mapa.descripcion}</span>
+      <span class="sitio-sello">${sello}</span>
+    </button>`;
+  }
+
+  // Paso 1: el jugador banea 1 de los 5 mapas candidatos.
+  function vistaVetoMapa() {
+    const st = ST();
+    const candidatos = (st.mapasCandidatos || []).map((id) => P().mapaPorId(id)).filter(Boolean);
+    const tarjetas = candidatos.map((m) => tarjetaMapa(m, seleccionMapa === m.id,
+      seleccionMapa === m.id ? "MARCASTE ESTE MAPA" : "BANEAR ESTE MAPA")).join("");
+    return `<div class="briefing">
+      <div class="briefing__head"><span class="tag">FASE PREVIA · VETO DE MAPAS</span>
+        <span class="briefing__date">5 CANDIDATOS · BANEA 1 CADA UNO</span></div>
+      <h2>Baneá un mapa</h2>
+      <p class="muted">Salen <strong>${candidatos.length} mapas</strong>. Vos baneás uno y el rival banea otro:
+        entre los <strong>3 restantes</strong> elegís vos dónde se juega la partida.</p>
+      <div class="mapa-grid">${tarjetas}</div>
+      <button class="btn btn-primary btn-block" id="btn-veto-mapa" data-acc="a-confirmar-veto" type="button" ${seleccionMapa ? "" : "disabled"}>Confirmar veto</button>
+    </div>`;
+  }
+
+  // Paso 2: se revelan los dos vetos y el jugador elige entre los mapas que quedaron.
+  function vistaElegirMapa() {
+    const st = ST();
+    const disponibles = P().mapasDisponibles().map((id) => P().mapaPorId(id)).filter(Boolean);
+    const mJ = P().mapaPorId(st.vetoMapaJ);
+    const mR = P().mapaPorId(st.vetoMapaRival);
+    const tarjetas = disponibles.map((m) => tarjetaMapa(m, seleccionMapa === m.id,
+      seleccionMapa === m.id ? "SE JUEGA ACÁ" : "DISPONIBLE")).join("");
+    return `<div class="briefing">
+      <div class="briefing__head"><span class="tag">FASE PREVIA · ELECCIÓN DE MAPA</span>
+        <span class="briefing__date">${disponibles.length} MAPAS EN PIE</span></div>
+      <h2>Elegí dónde se juega</h2>
+      <p class="muted">Vos baneaste <strong>${mJ ? mJ.nombre : "—"}</strong> · El rival baneó <strong>${mR ? mR.nombre : "—"}</strong>.
+        Elegí uno de los mapas que quedaron.</p>
+      <div class="mapa-grid">${tarjetas}</div>
+      <button class="btn btn-primary btn-block" id="btn-elegir-mapa" data-acc="a-elegir-mapa" type="button" ${seleccionMapa ? "" : "disabled"}>Jugar en este mapa</button>
+    </div>`;
+  }
+
   function vistaMapa() {
     const st = ST();
     return `${cabecera()}
@@ -192,18 +242,21 @@
   }
 
   // ---------- PUNTO DE LA RONDA ----------
+  // El punto lo elige SIEMPRE el equipo defensor. En ataque la tarjeta ni siquiera es un
+  // botón: no hay forma de tocarla, solo se muestra el punto que puso el rival.
   function tarjetaSitio(nombre, i, bloqueado, elegido, ataco) {
     const cls = ["sitio-card"];
     if (bloqueado) cls.push("bloqueado");
     if (elegido) cls.push("seleccionado");
+    if (ataco) cls.push("solo-lectura");
     const sello = bloqueado ? "GANASTE AQUÍ · BLOQUEADO"
       : elegido ? (ataco ? "PUNTO DEL RIVAL" : "TU ELECCIÓN")
-      : "DISPONIBLE";
-    return `<button class="${cls.join(" ")}" data-sitio="${i}" type="button" ${ataco || bloqueado ? "disabled" : ""}>
-      <span class="sitio-ico" aria-hidden="true">💣</span>
+      : ataco ? "NO ELEGIDO" : "DISPONIBLE";
+    const interior = `<span class="sitio-ico" aria-hidden="true">💣</span>
       <strong>${nombre}</strong>
-      <span class="sitio-sello">${sello}</span>
-    </button>`;
+      <span class="sitio-sello">${sello}</span>`;
+    if (ataco) return `<div class="${cls.join(" ")}">${interior}</div>`;
+    return `<button class="${cls.join(" ")}" data-sitio="${i}" type="button" ${bloqueado ? "disabled" : ""}>${interior}</button>`;
   }
 
   function vistaSitio() {
@@ -220,7 +273,8 @@
         <div class="briefing__head"><span class="tag">RONDA ${st.rondaNum + 1} · ${lado.toUpperCase()} · PUNTO</span></div>
         <h2>${ataco ? "El rival elige el punto" : "Elegí el punto a defender"}</h2>
         <p class="muted">${ataco
-          ? `Vas a atacar: el rival defiende y elige el punto de ${st.mapa.nombre} que van a jugar.`
+          ? `Vas a atacar: el punto lo elige <strong>siempre el equipo defensor</strong>, así que en ataque no se puede elegir.
+             El rival ya puso su punto en ${st.mapa.nombre}.`
           : `Vos defendés: elegí uno de los ${sitios.length} puntos de ${st.mapa.nombre} para jugar la ronda.`}</p>
         <div class="sitio-grid">${tarjetas}</div>
         <p class="muted sitio-regla">Ganar en un punto lo <strong>bloquea</strong> y no se vuelve a jugar en esta partida.
@@ -524,6 +578,12 @@
       seleccionSitio = Number(b.dataset.sitio);
       render();
     }));
+    (raiz || document).querySelectorAll("[data-mapa]").forEach((b) => b.addEventListener("click", () => {
+      const f = ST().fase;
+      if ((f !== "vetoMapa" && f !== "elegirMapa") || b.disabled) return;
+      seleccionMapa = b.dataset.mapa;
+      render();
+    }));
   }
 
   function elegirDraft(id) {
@@ -584,7 +644,25 @@
 
   function accion(cual) {
     const st = ST();
-    if (cual === "a-sitio") {
+    if (cual === "a-confirmar-veto") {
+      // El jugador banea 1 mapa y acto seguido el rival banea 1 distinto.
+      if (st.fase !== "vetoMapa" || !seleccionMapa) return;
+      if (!P().vetoMapaJ(seleccionMapa)) return;
+      const vetoRival = P().vetoMapaRival();
+      const mapaRival = vetoRival ? P().mapaPorId(vetoRival) : null;
+      seleccionMapa = null;
+      st.fase = "elegirMapa";
+      if (mapaRival) {
+        window.SIEGE_DLE.toast.mostrar(`El rival banea el mapa ${mapaRival.nombre}: prefiere otro terreno.`, "warning");
+      }
+    }
+    else if (cual === "a-elegir-mapa") {
+      if (st.fase !== "elegirMapa" || !seleccionMapa) return;
+      if (!P().elegirMapa(seleccionMapa)) return;
+      seleccionMapa = null;
+      st.fase = "mapa";
+    }
+    else if (cual === "a-sitio") {
       // Empieza la ronda eligiendo el punto: lo defendés vos o lo elige el rival.
       P().prepararRonda();
       seleccionSitio = null;
@@ -616,7 +694,7 @@
     else if (cual === "a-draft") { st.fase = "draft"; st.opciones = P().opcionesDraft(); }
     else if (cual === "a-jugar-ronda") { P().iniciarRonda(); }
     else if (cual === "a-ver-fin") { st.fase = "fin"; }
-    else if (cual === "a-otra") { P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; }
+    else if (cual === "a-otra") { P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; seleccionMapa = null; }
     render();
   }
 
