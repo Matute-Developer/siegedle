@@ -21,6 +21,18 @@
     return window.SIEGE_DLE.retrato.retratoHTML(op, esEl ? "ok" : "bad");
   }
 
+  // La BD guarda la región con país ("Europa (Reino Unido)"): la celda se queda con el
+  // continente y el país viaja en el tooltip. El verde/rojo es a nivel de continente.
+  function continenteDe(v) {
+    return String(v || "").split(" (")[0].trim();
+  }
+
+  function celdaContinente(op) {
+    const c = continenteDe(op.continente);
+    const pais = op.continente && op.continente !== c ? ` title="${String(op.continente).replace(/"/g, "&quot;")}"` : "";
+    return `<span${pais}>${c}</span>`;
+  }
+
   function mostrarBanner(tipo, texto) {
     const el = document.getElementById("resultado-ronda");
     if (!el) return;
@@ -47,7 +59,12 @@
       // El último análisis siempre arriba.
       [...st.intentos].reverse().forEach((op) => {
         const esEl = Boolean(objetivo) && op.id === objetivo.id;
-        const marca = (campo, html) => celda(html === undefined ? op[campo] : html, esEl || (objetivo ? op[campo] === objetivo[campo] : false));
+        const coincide = (campo) => {
+          if (!objetivo) return false;
+          if (campo === "continente") return continenteDe(op.continente) === continenteDe(objetivo.continente);
+          return op[campo] === objetivo[campo];
+        };
+        const marca = (campo, html) => celda(html === undefined ? op[campo] : html, esEl || coincide(campo));
         const tr = document.createElement("tr");
         tr.className = "attempt" + (esEl ? " es-confirmado" : "");
         tr.innerHTML = `
@@ -56,7 +73,7 @@
           ${marca("bando", `<span class="bando ${op.bando}">${bandoLabel(op.bando)}</span>`)}
           ${marca("rol")}
           ${marca("sexo")}
-          ${marca("continente")}
+          ${marca("continente", celdaContinente(op))}
           ${celdaAnio(op, objetivo)}
           ${marca("velocidad", `<span class="vel">${"●".repeat(op.velocidad)}${"○".repeat(3 - op.velocidad)}</span>`)}
           ${marca("gadget")}`;
