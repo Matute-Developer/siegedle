@@ -129,10 +129,15 @@
     const total = document.getElementById("total-operadores");
     if (total) total.textContent = String(ops.length);
     ops.forEach((op) => {
-      const el = document.createElement("article");
+      const el = document.createElement("button");
+      el.type = "button";
       el.className = "op-card";
+      el.dataset.op = op.id;
       el.innerHTML = `${window.SIEGE_DLE.retrato.retratoHTML(op)}
-        <div><h3>${op.nombre}</h3><p class="muted">${bandoLabel(op.bando)} · ${op.rol} · Vel. ${op.velocidad}</p></div>`;
+        <span class="op-card__text">
+          <span class="op-card__nombre">${op.nombre}</span>
+          <span class="op-card__meta">${bandoLabel(op.bando)} · ${op.rol} · Vel. ${op.velocidad}</span>
+        </span>`;
       grid.appendChild(el);
     });
   }
