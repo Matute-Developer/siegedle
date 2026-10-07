@@ -1,14 +1,27 @@
 /* Ficha breve del operador: se abre al pulsar una tarjeta de la galería
-   (vista Operadores). Pinta solo datos de la base; los rasgos internos de
-   composición nunca se muestran. */
+   (vista Operadores). Muestra el retrato completo del operador y los datos
+   de la base; los rasgos internos de composición nunca se muestran. */
 (function () {
   let ultimoFoco = null;
+  let actual = null;
 
   function ops() { return window.SIEGE_DLE.operators || []; }
   function porId(id) { return ops().find((o) => o.id === id); }
 
   function esc(v) {
     return String(v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
+
+  // Retrato completo dentro de la ficha; si no hay (o falla la descarga) se
+  // devuelve al avatar circular del operador.
+  function retratoFicha(op) {
+    if (!op.retrato) return window.SIEGE_DLE.retrato.retratoHTML(op);
+    return `<img class="ficha__retrato-img" src="${esc(op.retrato)}" alt="Retrato de ${esc(op.nombre)}" onerror="SIEGE_DLE.ficha.falloRetrato()" />`;
+  }
+
+  function falloRetrato() {
+    const cont = document.getElementById("ficha-retrato");
+    if (cont && actual) cont.innerHTML = window.SIEGE_DLE.retrato.retratoHTML(actual);
   }
 
   function fila(etiqueta, valor) {
@@ -24,10 +37,14 @@
 
   function rellenar(op) {
     const T = window.SIEGE_DLE.textos.etiquetasFicha;
+    actual = op;
     const bando = document.getElementById("ficha-bando");
     bando.className = `bando ${op.bando}`;
     bando.textContent = op.bando === "atacante" ? T.atacante : T.defensor;
-    document.getElementById("ficha-retrato").innerHTML = window.SIEGE_DLE.retrato.retratoHTML(op);
+    document.getElementById("ficha-retrato").innerHTML = retratoFicha(op);
+    // Se fuerza la carga: con loading="lazy" dentro de un modal puede no dispararse.
+    const imgFicha = document.querySelector("#ficha-retrato img");
+    if (imgFicha) imgFicha.loading = "eager";
     document.getElementById("ficha-titulo").textContent = op.nombre;
     document.getElementById("ficha-unidad").textContent = op.unidad || "";
     const puntos = "●".repeat(op.velocidad) + "○".repeat(Math.max(0, 3 - op.velocidad));
@@ -45,8 +62,10 @@
     const modal = document.getElementById("modal-ficha");
     if (!modal || !op) return;
     ultimoFoco = document.activeElement;
-    rellenar(op);
+    // Se muestra primero: si el modal sigue oculto, la imagen con loading="lazy"
+    // no tiene caja y nunca empieza a descargar.
     modal.hidden = false;
+    rellenar(op);
     const btn = document.getElementById("btn-cerrar-ficha");
     if (btn) btn.focus();
   }
@@ -80,5 +99,5 @@
   }
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
-  window.SIEGE_DLE.ficha = { init, abrir, cerrar };
+  window.SIEGE_DLE.ficha = { init, abrir, cerrar, falloRetrato };
 })();
