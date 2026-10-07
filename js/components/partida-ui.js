@@ -1,10 +1,13 @@
-/* Interfaz del modo Partida: mapa, punto por ronda, bans, draft, simulación y final. */
+/* Interfaz del modo Partida: pantalla de inicio, veto y sorteo de mapa, punto de bomba /
+   punto de arranque, bans, draft, simulación y final. */
 (function () {
   let pasoBan = 0; // 0: baneo yo, 1: banea el rival, 2: resumen
   let ultimoBanRival = null;
   let seleccionBan = null;
-  let seleccionSitio = null; // índice del punto marcado antes de confirmarlo
-  let seleccionMapa = null;  // id del mapa marcado (veto o elección)
+  let seleccionSitio = null; // índice del punto de bomba marcado antes de confirmarlo
+  let seleccionSpawn = null; // índice del punto de arranque marcado antes de confirmarlo
+  let seleccionMapa = null;  // id del mapa marcado en el veto
+  let panelInicio = null;    // null: botones | "mapas": ver mapas | "reglas": cómo se juega
   let temporizadores = [];
   let alimentando = false;
   let enPausa = false;
@@ -133,9 +136,8 @@
 
   function entrar() {
     const st = ST();
-    if (st.fase === "fin" || !st.mapasCandidatos || !st.mapasCandidatos.length) {
-      P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; seleccionMapa = null;
-    }
+    // Una partida terminada vuelve a la pantalla de inicio; una en curso se retoma donde estaba.
+    if (st.fase === "fin") { st.fase = "inicio"; panelInicio = null; }
     render();
   }
 
@@ -146,8 +148,9 @@
     if (enPausa && fasePausada !== st.fase) { enPausa = false; fasePausada = null; }
     const cont = document.getElementById("partida-contenido");
     if (!cont) return;
-    if (st.fase === "vetoMapa") cont.innerHTML = vistaVetoMapa();
-    else if (st.fase === "elegirMapa") cont.innerHTML = vistaElegirMapa();
+    if (st.fase === "inicio") cont.innerHTML = vistaInicio();
+    else if (st.fase === "vetoMapa") cont.innerHTML = vistaVetoMapa();
+    else if (st.fase === "sorteo") cont.innerHTML = vistaSorteo();
     else if (st.fase === "mapa") cont.innerHTML = vistaMapa();
     else if (st.fase === "sitio") cont.innerHTML = vistaSitio();
     else if (st.fase === "bans") cont.innerHTML = vistaBans();
@@ -177,7 +180,61 @@
     return `<p class="muted">Baneados en la partida: <strong>${st.vetados.map((id) => porId(id).nombre).join(" · ")}</strong></p>`;
   }
 
-  // ---------- VETO DE MAPA Y ELECCIÓN DE MAPA ----------
+  // ---------- PANTALLA DE INICIO (antes de arrancar la partida) ----------
+  function vistaInicio() {
+    if (panelInicio === "mapas") return vistaListaMapas();
+    if (panelInicio === "reglas") return vistaReglas();
+    return `<div class="inicio">
+      <div class="inicio-botones">
+        <button class="btn btn-primary inicio-jugar" data-acc="a-jugar" type="button">JUGAR</button>
+        <button class="btn btn-ghost" data-acc="a-ver-mapas" type="button">Ver mapas</button>
+        <button class="btn btn-ghost" data-acc="a-como-se-juega" type="button">Cómo se juega</button>
+      </div>
+    </div>`;
+  }
+
+  function arranquesDe(id) {
+    const lista = window.SIEGE_DLE.puntosAtaque || [];
+    const fila = lista.find((e) => e.mapa === id);
+    return fila ? fila.puntos : [];
+  }
+
+  function vistaListaMapas() {
+    const mapas = window.SIEGE_DLE.mapas || [];
+    const filas = mapas.map((m) => `<div class="mapa-ficha">
+        <div class="mapa-ficha__head"><strong>🗺️ ${m.nombre}</strong><span class="pill">${m.sitios.length} puntos</span></div>
+        <p class="mapa-desc">${m.descripcion}</p>
+        <p class="mapa-dato"><span class="mapa-dato__label">Puntos de bomba</span>${m.sitios.map((s) => `<span class="pill">💣 ${s}</span>`).join("")}</p>
+        <p class="mapa-dato"><span class="mapa-dato__label">Arranques</span>${arranquesDe(m.id).map((s) => `<span class="pill pill-acc">🚀 ${s}</span>`).join("")}</p>
+      </div>`).join("");
+    return `<div class="briefing">
+      <div class="briefing__head"><span class="tag">LOS 14 MAPAS</span>
+        <span class="briefing__date">PUNTOS DE BOMBA + ARRANQUES</span></div>
+      <h2>Mapas y puntos</h2>
+      <div class="mapas-lista">${filas}</div>
+      <button class="btn btn-ghost btn-block" data-acc="a-volver-inicio" type="button">← Volver</button>
+    </div>`;
+  }
+
+  function vistaReglas() {
+    return `<div class="briefing">
+      <div class="briefing__head"><span class="tag">CÓMO SE JUEGA</span>
+        <span class="briefing__date">TÚ VS RIVAL · PRIMERO EN 4</span></div>
+      <h2>Modo Partida</h2>
+      <ol class="reglas-lista">
+        <li><strong>Veto de mapa:</strong> salen <strong>5 mapas al azar</strong>. Vos baneás 1 y el rival banea 1.</li>
+        <li><strong>Sorteo:</strong> entre los 3 que quedan, el mapa que se juega sale <strong>totalmente al azar</strong>.</li>
+        <li><strong>Punto y arranque:</strong> si <strong>defendés</strong> elegís el punto de bomba (💣); si <strong>atacás</strong> elegís el punto de arranque (🚀) y el punto lo pone el rival. El punto donde ganaste queda <strong>bloqueado</strong> para el resto de la partida.</li>
+        <li><strong>Bans:</strong> cada ronda baneás 1 rival y el rival banea 1 tuyo. Los baneos se <strong>acumulan</strong> en toda la partida.</li>
+        <li><strong>Draft:</strong> armás tu equipo de <strong>5</strong> con el bando que te toca en la ronda.</li>
+        <li><strong>Ronda:</strong> tomás <strong>2 decisiones</strong> con 3 opciones cada una. Sin pistas: el que se equivoca, se equivoca.</li>
+        <li><strong>Gana quien llegue a 4</strong> rondas. Quien arranca <strong>alterna</strong> entre partidas.</li>
+      </ol>
+      <button class="btn btn-ghost btn-block" data-acc="a-volver-inicio" type="button">← Volver</button>
+    </div>`;
+  }
+
+  // ---------- VETO DE MAPA Y SORTEO ----------
   function tarjetaMapa(mapa, marcado, sello) {
     return `<button class="mapa-card${marcado ? " seleccionado" : ""}" data-mapa="${mapa.id}" type="button">
       <strong>🗺️ ${mapa.nombre}</strong>
@@ -197,28 +254,35 @@
         <span class="briefing__date">5 CANDIDATOS · BANEA 1 CADA UNO</span></div>
       <h2>Baneá un mapa</h2>
       <p class="muted">Salen <strong>${candidatos.length} mapas</strong>. Vos baneás uno y el rival banea otro:
-        entre los <strong>3 restantes</strong> elegís vos dónde se juega la partida.</p>
+        entre los <strong>3 restantes</strong> el mapa se <strong>sortea</strong>.</p>
       <div class="mapa-grid">${tarjetas}</div>
       <button class="btn btn-primary btn-block" id="btn-veto-mapa" data-acc="a-confirmar-veto" type="button" ${seleccionMapa ? "" : "disabled"}>Confirmar veto</button>
     </div>`;
   }
 
-  // Paso 2: se revelan los dos vetos y el jugador elige entre los mapas que quedaron.
-  function vistaElegirMapa() {
+  // Paso 2: los dos vetos dejaron 3 mapas; de ahí sale uno al azar.
+  function tarjetaSorteo(mapa) {
+    return `<div class="mapa-card mapa-card--sorteo" data-sorteo="${mapa.id}">
+      <strong>🗺️ ${mapa.nombre}</strong>
+      <span class="mapa-desc">${mapa.descripcion}</span>
+      <span class="sitio-sello">EN CARTELA</span>
+    </div>`;
+  }
+
+  function vistaSorteo() {
     const st = ST();
     const disponibles = P().mapasDisponibles().map((id) => P().mapaPorId(id)).filter(Boolean);
     const mJ = P().mapaPorId(st.vetoMapaJ);
     const mR = P().mapaPorId(st.vetoMapaRival);
-    const tarjetas = disponibles.map((m) => tarjetaMapa(m, seleccionMapa === m.id,
-      seleccionMapa === m.id ? "SE JUEGA ACÁ" : "DISPONIBLE")).join("");
+    const tarjetas = disponibles.map(tarjetaSorteo).join("");
     return `<div class="briefing">
-      <div class="briefing__head"><span class="tag">FASE PREVIA · ELECCIÓN DE MAPA</span>
-        <span class="briefing__date">${disponibles.length} MAPAS EN PIE</span></div>
-      <h2>Elegí dónde se juega</h2>
+      <div class="briefing__head"><span class="tag">SORTEO DE MAPA</span>
+        <span class="briefing__date">${disponibles.length} MAPAS EN CARTELA</span></div>
+      <h2 id="sorteo-titulo">🎲 A sortear el mapa…</h2>
       <p class="muted">Vos baneaste <strong>${mJ ? mJ.nombre : "—"}</strong> · El rival baneó <strong>${mR ? mR.nombre : "—"}</strong>.
-        Elegí uno de los mapas que quedaron.</p>
-      <div class="mapa-grid">${tarjetas}</div>
-      <button class="btn btn-primary btn-block" id="btn-elegir-mapa" data-acc="a-elegir-mapa" type="button" ${seleccionMapa ? "" : "disabled"}>Jugar en este mapa</button>
+        De los que quedaron en pie sale uno <strong>totalmente al azar</strong>.</p>
+      <div class="mapa-grid" id="sorteo-grid">${tarjetas}</div>
+      <button class="btn btn-primary btn-block" id="btn-sortear" data-acc="a-sortear" type="button">🎲 ¡Sortear mapa!</button>
     </div>`;
   }
 
@@ -226,37 +290,44 @@
     const st = ST();
     return `${cabecera()}
       <div class="briefing">
-        <div class="briefing__head"><span class="tag">MAPA SELECCIONADO</span></div>
+        <div class="briefing__head"><span class="tag">MAPA SORTEADO</span></div>
         <h2>🗺️ ${st.mapa.nombre}</h2>
         <p class="muted">${st.mapa.descripcion}</p>
         <div class="briefing__meta">
-          <div class="meta"><span>PUNTOS</span><strong>💣 ${st.mapa.sitios.length} · uno por ronda</strong></div>
+          <div class="meta"><span>PUNTOS DE BOMBA</span><strong>💣 ${st.mapa.sitios.length}</strong></div>
+          <div class="meta"><span>ARRANQUES</span><strong>🚀 ${P().puntosSpawn().length}</strong></div>
           <div class="meta"><span>PARTIDA</span><strong>Primero en 4 rondas</strong></div>
         </div>
-        <p class="muted" style="margin-top:.8rem">Cada ronda se juega en un punto: si <strong>defendés</strong> lo elegís vos
-          y si <strong>atacás</strong> lo elige el rival. El punto donde ganaste queda <strong>bloqueado</strong> para el resto
-          de la partida; si perdiste, se puede volver a elegir.</p>
+        <p class="muted" style="margin-top:.8rem">Cada ronda tiene dos cosas: el <strong>punto de bomba</strong> (lo fija
+          <strong>siempre el defensor</strong>: si defendés lo elegís vos, si atacás lo pone el rival) y el <strong>punto de
+          arranque</strong> del atacante (🚀: si atacás lo elegís vos, si defendés lo pone el rival). El punto donde ganaste
+          queda <strong>bloqueado</strong> para el resto de la partida; si perdiste, se puede volver a elegir.</p>
         <p class="muted">Esta partida se empieza <strong>${st.empieza === "ataque" ? "atacando" : "defendiendo"}</strong> (se alterna entre partidas). El rival ya tiene su plan.</p>
         <button class="btn btn-primary btn-block" data-acc="a-sitio" type="button">Comenzar ronda 1</button>
       </div>`;
   }
 
-  // ---------- PUNTO DE LA RONDA ----------
-  // El punto lo elige SIEMPRE el equipo defensor. En ataque la tarjeta ni siquiera es un
-  // botón: no hay forma de tocarla, solo se muestra el punto que puso el rival.
-  function tarjetaSitio(nombre, i, bloqueado, elegido, ataco) {
+  // ---------- PUNTO DE BOMBA Y PUNTO DE ARRANQUE ----------
+  // Dos caras de la misma ronda: el punto de bomba lo fija SIEMPRE el defensor y el punto de
+  // arranque SIEMPRE el atacante. Cuando elige el rival, acá no se renderiza ningún botón.
+  function tarjetaSitio(nombre, i, bloqueado, elegido) {
     const cls = ["sitio-card"];
     if (bloqueado) cls.push("bloqueado");
     if (elegido) cls.push("seleccionado");
-    if (ataco) cls.push("solo-lectura");
-    const sello = bloqueado ? "GANASTE AQUÍ · BLOQUEADO"
-      : elegido ? (ataco ? "PUNTO DEL RIVAL" : "TU ELECCIÓN")
-      : ataco ? "NO ELEGIDO" : "DISPONIBLE";
-    const interior = `<span class="sitio-ico" aria-hidden="true">💣</span>
+    const sello = bloqueado ? "GANASTE AQUÍ · BLOQUEADO" : elegido ? "TU ELECCIÓN" : "DISPONIBLE";
+    return `<button class="${cls.join(" ")}" data-sitio="${i}" type="button" ${bloqueado ? "disabled" : ""}>
+      <span class="sitio-ico" aria-hidden="true">💣</span>
       <strong>${nombre}</strong>
-      <span class="sitio-sello">${sello}</span>`;
-    if (ataco) return `<div class="${cls.join(" ")}">${interior}</div>`;
-    return `<button class="${cls.join(" ")}" data-sitio="${i}" type="button" ${bloqueado ? "disabled" : ""}>${interior}</button>`;
+      <span class="sitio-sello">${sello}</span>
+    </button>`;
+  }
+
+  function tarjetaSpawn(nombre, i, elegido) {
+    return `<button class="sitio-card${elegido ? " seleccionado" : ""}" data-spawn="${i}" type="button">
+      <span class="sitio-ico" aria-hidden="true">🚀</span>
+      <strong>${nombre}</strong>
+      <span class="sitio-sello">${elegido ? "TU PUNTO DE ARRANQUE" : "ARRANCAR ACÁ"}</span>
+    </button>`;
   }
 
   function vistaSitio() {
@@ -264,25 +335,38 @@
     const lado = P().ladoProximo();
     const ataco = lado === "ataque";
     const sitios = (st.mapa && st.mapa.sitios) || [];
-    const tarjetas = sitios.map((nombre, i) =>
-      tarjetaSitio(nombre, i, P().sitioBloqueado(i),
-        ataco ? st.sitioIdx === i : seleccionSitio === i, ataco)).join("");
     const bloqueados = (st.sitiosGanados || []).map((i) => sitios[i]);
+
+    // ATACÁS: elegís desde dónde entrás; el punto de bomba lo puso el defensor y no se toca.
+    if (ataco) {
+      const spawns = P().puntosSpawn();
+      const tarjetas = spawns.map((nombre, i) => tarjetaSpawn(nombre, i, seleccionSpawn === i)).join("");
+      return `${cabecera()}
+        <div class="briefing">
+          <div class="briefing__head"><span class="tag">RONDA ${st.rondaNum + 1} · ATAQUE · PUNTO DE ARRANQUE</span></div>
+          <h2>Elegí desde dónde entrás</h2>
+          <p class="muted">El equipo defensor ya eligió el punto de bomba y <strong>vos no podés tocarlo</strong>:
+            la ronda se juega en 💣 <strong>${st.sitio || "el punto del rival"}</strong>. Tocá tu punto de arranque.</p>
+          <div class="punto-rival">💣 ${st.sitio || "…"}</div>
+          <div class="sitio-grid">${tarjetas}</div>
+          <button class="btn btn-primary btn-block" id="btn-elegir-spawn" data-acc="a-elegir-spawn" type="button" ${seleccionSpawn === null ? "disabled" : ""}>Usar este arranque y continuar</button>
+        </div>`;
+    }
+
+    // DEFENDÉS: elegís el punto de bomba; el rival (atacante) ya eligió su arranque.
+    const tarjetas = sitios.map((nombre, i) => tarjetaSitio(nombre, i, P().sitioBloqueado(i), seleccionSitio === i)).join("");
     return `${cabecera()}
       <div class="briefing">
-        <div class="briefing__head"><span class="tag">RONDA ${st.rondaNum + 1} · ${lado.toUpperCase()} · PUNTO</span></div>
-        <h2>${ataco ? "El rival elige el punto" : "Elegí el punto a defender"}</h2>
-        <p class="muted">${ataco
-          ? `Vas a atacar: el punto lo elige <strong>siempre el equipo defensor</strong>, así que en ataque no se puede elegir.
-             El rival ya puso su punto en ${st.mapa.nombre}.`
-          : `Vos defendés: elegí uno de los ${sitios.length} puntos de ${st.mapa.nombre} para jugar la ronda.`}</p>
+        <div class="briefing__head"><span class="tag">RONDA ${st.rondaNum + 1} · DEFENSA · PUNTO DE BOMBA</span></div>
+        <h2>Elegí el punto a defender</h2>
+        <p class="muted">Vos defendés: elegí uno de los ${sitios.length} puntos de ${st.mapa.nombre}.
+          El rival ya eligió desde dónde entra.</p>
+        <div class="punto-rival">🚀 ${st.spawn || "…"}</div>
         <div class="sitio-grid">${tarjetas}</div>
         <p class="muted sitio-regla">Ganar en un punto lo <strong>bloquea</strong> y no se vuelve a jugar en esta partida.
           Perder deja el punto disponible para volver a pickearlo.</p>
         ${bloqueados.length ? `<p class="muted">Bloqueados: <strong>${bloqueados.join(" · ")}</strong></p>` : ""}
-        ${ataco
-          ? `<button class="btn btn-primary btn-block" data-acc="a-bans" type="button">Continuar a bans</button>`
-          : `<button class="btn btn-primary btn-block" id="btn-elegir-sitio" data-acc="a-elegir-sitio" type="button" ${seleccionSitio === null ? "disabled" : ""}>Elegir punto y continuar</button>`}
+        <button class="btn btn-primary btn-block" id="btn-elegir-sitio" data-acc="a-elegir-sitio" type="button" ${seleccionSitio === null ? "disabled" : ""}>Elegir punto y continuar</button>
       </div>`;
   }
 
@@ -390,7 +474,9 @@
     return `${cabecera()}
       <div class="briefing"><div class="briefing__head"><span class="tag">RONDA ${st.rondaNum + 1} · ${lado.toUpperCase()}</span></div>
         <h2>${lado === "ataque" ? "Atacás el punto" : "Defendés el punto"}</h2>
-        <p class="muted">${st.mapa.nombre} — 💣 ${st.sitio}. Primero en 4 rondas gana.</p>
+        <p class="muted">${st.mapa.nombre} — ${lado === "ataque"
+          ? `arranque 🚀 <strong>${st.spawn}</strong> · punto rival 💣 <strong>${st.sitio}</strong>`
+          : `punto 💣 <strong>${st.sitio}</strong> · arranque rival 🚀 <strong>${st.spawn}</strong>`}. Primero en 4 rondas gana.</p>
         ${bloqueados.length ? `<p class="muted">Puntos bloqueados: <strong>${bloqueados.join(" · ")}</strong></p>` : ""}
         ${panelProb(pr)}
         <h3>Tu equipo</h3><div class="team-row">${fichaEquipo(st.equipoJ)}</div>
@@ -539,7 +625,7 @@
       </div>
       ${res.fin
         ? `<button class="btn btn-primary btn-block" data-acc="a-ver-fin" type="button">Ver resultado final</button>`
-        : `<button class="btn btn-primary btn-block" data-acc="a-sitio" type="button">Ronda ${st.rondaNum + 1}: elegir punto</button>`}`;
+        : `<button class="btn btn-primary btn-block" data-acc="a-sitio" type="button">Ronda ${st.rondaNum + 1}: punto y arranque</button>`}`;
     conectarZona(zona);
     if (res.puntoBloqueado) {
       window.SIEGE_DLE.toast.mostrar(`Punto "${res.sitio}" ganado: queda bloqueado y no se vuelve a jugar en esta partida.`, "success");
@@ -555,7 +641,7 @@
         <h2>${victoria ? "🏆 VICTORIA" : "DERROTA"}</h2>
         <p class="stat-grande">${st.puntosJ} — ${st.puntosIA}</p>
         <p class="muted">${st.mapa.nombre} · 💣 ${st.sitio} · ${st.rondas.length} rondas.</p>
-        <div class="historial">${st.rondas.map((r) => `<span class="pill ${r.resultado === "victoria" ? "ok" : "bad"}" title="Ronda ${r.num} (${r.lado})${r.sitio ? " — " + r.sitio : ""}">R${r.num}</span>`).join("")}</div>
+        <div class="historial">${st.rondas.map((r) => `<span class="pill ${r.resultado === "victoria" ? "ok" : "bad"}" title="Ronda ${r.num} (${r.lado})${r.sitio ? " — 💣 " + r.sitio : ""}${r.spawn ? " — 🚀 " + r.spawn : ""}">R${r.num}</span>`).join("")}</div>
         <button class="btn btn-primary btn-block" data-acc="a-otra" type="button">Jugar otra partida</button>
       </div>`;
   }
@@ -578,9 +664,13 @@
       seleccionSitio = Number(b.dataset.sitio);
       render();
     }));
+    (raiz || document).querySelectorAll("[data-spawn]").forEach((b) => b.addEventListener("click", () => {
+      if (ST().fase !== "sitio" || b.disabled) return;
+      seleccionSpawn = Number(b.dataset.spawn);
+      render();
+    }));
     (raiz || document).querySelectorAll("[data-mapa]").forEach((b) => b.addEventListener("click", () => {
-      const f = ST().fase;
-      if ((f !== "vetoMapa" && f !== "elegirMapa") || b.disabled) return;
+      if (ST().fase !== "vetoMapa" || b.disabled) return;
       seleccionMapa = b.dataset.mapa;
       render();
     }));
@@ -642,40 +732,90 @@
     if (salto) salto.addEventListener("click", saltar);
   }
 
+  // SORTEO: el mapa sale totalmente al azar entre los que quedaron en pie, con una ruleta
+  // que va frenando y termina clavada en el mapa ganador.
+  function sortearMapa() {
+    const st = ST();
+    if (st.fase !== "sorteo") return;
+    const disponibles = P().mapasDisponibles();
+    if (!disponibles.length) return;
+    const elegido = disponibles[Math.floor(Math.random() * disponibles.length)];
+    const btn = document.getElementById("btn-sortear");
+    if (btn) { btn.disabled = true; btn.textContent = "🎲 Girando…"; }
+    const titulo = document.getElementById("sorteo-titulo");
+    const grid = document.getElementById("sorteo-grid");
+    const tarjetas = grid ? [...grid.querySelectorAll("[data-sorteo]")] : [];
+    const vueltas = 15;
+    let tick = 0;
+    const giro = setInterval(() => {
+      const idx = tarjetas.length ? Math.floor(Math.random() * tarjetas.length) : -1;
+      tarjetas.forEach((c, i) => c.classList.toggle("seleccionado", i === idx));
+      tick += 1;
+      if (tick >= vueltas) {
+        clearInterval(giro);
+        temporizadores = temporizadores.filter((t) => t !== giro);
+        const final = tarjetas.findIndex((c) => c.dataset.sorteo === elegido);
+        tarjetas.forEach((c, i) => c.classList.toggle("seleccionado", i === final));
+        const mapa = P().mapaPorId(elegido);
+        if (titulo && mapa) titulo.textContent = `🎉 ${mapa.nombre}`;
+        window.SIEGE_DLE.toast.mostrar(`Salió ${mapa ? mapa.nombre : "el mapa"}: a jugar esa ranked.`, "success");
+        temporizadores.push(setTimeout(() => {
+          if (st.fase !== "sorteo") return;
+          P().elegirMapa(elegido);
+          st.fase = "mapa";
+          render();
+        }, 1100));
+      }
+    }, 120);
+    temporizadores.push(giro);
+  }
+
   function accion(cual) {
     const st = ST();
-    if (cual === "a-confirmar-veto") {
-      // El jugador banea 1 mapa y acto seguido el rival banea 1 distinto.
+    if (cual === "a-jugar") {
+      // Arranca una partida nueva: primer paso, el veto de mapas.
+      panelInicio = null;
+      P().nuevoPartido();
+      pasoBan = 0; seleccionBan = null; seleccionSitio = null; seleccionSpawn = null; seleccionMapa = null;
+    }
+    else if (cual === "a-ver-mapas") { panelInicio = "mapas"; }
+    else if (cual === "a-como-se-juega") { panelInicio = "reglas"; }
+    else if (cual === "a-volver-inicio") { panelInicio = null; }
+    else if (cual === "a-confirmar-veto") {
+      // El jugador banea 1 mapa y acto seguido el rival banea 1 distinto: quedan 3 en cartelera.
       if (st.fase !== "vetoMapa" || !seleccionMapa) return;
       if (!P().vetoMapaJ(seleccionMapa)) return;
       const vetoRival = P().vetoMapaRival();
       const mapaRival = vetoRival ? P().mapaPorId(vetoRival) : null;
       seleccionMapa = null;
-      st.fase = "elegirMapa";
+      st.fase = "sorteo";
       if (mapaRival) {
         window.SIEGE_DLE.toast.mostrar(`El rival banea el mapa ${mapaRival.nombre}: prefiere otro terreno.`, "warning");
       }
     }
-    else if (cual === "a-elegir-mapa") {
-      if (st.fase !== "elegirMapa" || !seleccionMapa) return;
-      if (!P().elegirMapa(seleccionMapa)) return;
-      seleccionMapa = null;
-      st.fase = "mapa";
+    else if (cual === "a-sortear") {
+      // No re-renderiza: la ruleta maneja su propia animación y timers.
+      sortearMapa();
+      return;
     }
     else if (cual === "a-sitio") {
-      // Empieza la ronda eligiendo el punto: lo defendés vos o lo elige el rival.
+      // La ronda arranca con punto y arranque: cada uno lo fija el bando que le corresponde.
       P().prepararRonda();
       seleccionSitio = null;
+      seleccionSpawn = null;
       st.fase = "sitio";
-      if (P().ladoProximo() === "ataque") P().elegirSitioIA();
+      if (P().ladoProximo() === "ataque") P().elegirSitioIA(); // el rival defiende: pone el punto
+      else P().elegirSpawnIA();                                 // el rival ataca: pone su arranque
     }
     else if (cual === "a-elegir-sitio") {
       if (st.fase !== "sitio" || seleccionSitio === null) return;
       if (!P().elegirSitioJ(seleccionSitio)) return;
       st.fase = "bans"; pasoBan = 0; seleccionBan = null;
     }
-    else if (cual === "a-bans") {
-      if (st.fase !== "sitio" || !st.sitio) return;
+    else if (cual === "a-elegir-spawn") {
+      if (st.fase !== "sitio" || seleccionSpawn === null) return;
+      const nombre = P().puntosSpawn()[seleccionSpawn];
+      if (!nombre || !P().elegirSpawnJ(nombre)) return;
       st.fase = "bans"; pasoBan = 0; seleccionBan = null;
     }
     else if (cual === "a-confirmar-ban") {
@@ -694,7 +834,7 @@
     else if (cual === "a-draft") { st.fase = "draft"; st.opciones = P().opcionesDraft(); }
     else if (cual === "a-jugar-ronda") { P().iniciarRonda(); }
     else if (cual === "a-ver-fin") { st.fase = "fin"; }
-    else if (cual === "a-otra") { P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; seleccionMapa = null; }
+    else if (cual === "a-otra") { P().nuevoPartido(); pasoBan = 0; seleccionSitio = null; seleccionSpawn = null; seleccionMapa = null; panelInicio = null; }
     render();
   }
 
