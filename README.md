@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.20.0 (adivinanza + modo Partida con veto de mapa + fichas con retrato + backend + BD ligera)
+# SIEGE DLE — v0.21.0 (adivinanza + modo Partida con sorteo de mapa y punto de arranque + fichas con retrato + backend + BD ligera)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -30,16 +30,22 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
 - Dedicatoria visible al clan TKOA + mensaje en cabecera y pie.
 
 ## Modo Partida (TÚ vs RIVAL, primero en 4)
-- **Veto de mapa antes de arrancar**: salen **5 mapas al azar** (sin repetir el último jugado),
-  vos baneás 1 y el rival banea 1 distinto; entre los **3 restantes elegís vos** dónde se juega.
-- Los 14 mapas con sus **4 puntos**: Banco, Frontera,
-  Casino Calypso, Chalet, Club, Litoral, Consulado, La Fortaleza, Café Dostoyevsky, Guarida,
-  Laboratorios de Nighthaven, Rascacielos, Parque de Atracciones y Villa.
-- **El punto de bomba lo elige siempre el equipo defensor**: si defendés, lo pickeás vos entre los
-  4 del mapa; si **atacás no se puede elegir** (lo pone el rival y vos lo jugás tal cual; la
-  tarjeta ni siquiera es un botón en ataque). **El punto donde ganaste una ronda queda bloqueado**
-  y no se vuelve a jugar en toda la partida; si perdiste ahí, sigue disponible y se puede volver a
-  pickear (nunca te quedas sin puntos: con 3 victorias siempre queda al menos 1 libre).
+- **Pantalla de inicio**: el modo no arranca en los mapas. El cartel de arriba dice
+  **«JUGATE UNA RANKED NACHO»** (modo meme) y abajo *«como diria un amigo BALRIGHT»*; en el
+  contenido hay tres botones: **JUGAR** (arranca el veto), **Ver mapas** (los 14 mapas con sus
+  puntos de bomba y sus arranques) y **Cómo se juega**.
+- **Veto + sorteo de mapa**: salen **5 mapas al azar** (sin repetir el último jugado), vos baneás 1
+  y el rival banea 1 distinto; entre los **3 restantes el mapa sale totalmente al azar**, con una
+  ruleta que se ve girar en pantalla (`#btn-sortear`, `vistaSorteo()`).
+- Los 14 mapas con sus **4 puntos de bomba** y sus **puntos de arranque** (`js/data/puntos-ataque.js`):
+  Banco, Frontera, Casino Calypso, Chalet, Club, Litoral, Consulado, La Fortaleza, Café Dostoyevsky,
+  Guarida, Laboratorios de Nighthaven, Rascacielos, Parque de Atracciones y Villa.
+- **Punto de bomba y punto de arranque** (uno por bando): el **punto de bomba lo fija siempre el
+  defensor** (si defendés lo pickeás vos; si atacás lo pone el rival y no se puede tocar) y el
+  **punto de arranque lo fija siempre el atacante** (si atacás elegís desde dónde entrás 🚀; si
+  defendés lo pone el rival). **El punto donde ganaste una ronda queda bloqueado** y no se vuelve a
+  jugar en toda la partida; si perdiste ahí, sigue disponible y se puede volver a pickear (nunca te
+  quedas sin puntos: con 3 victorias siempre queda al menos 1 libre).
 - Cada ronda: vos baneás 1 del bando rival y el rival banea 1 del tuyo. Los baneos valen para toda la partida.
   El baneo se marca y se confirma aparte; hay un reloj global de 30 s para todo el baneo y otro global de 90 s
   para los 5 picks (no se reinicia por personaje). Si se acaban, el sistema termina solo.
@@ -85,6 +91,7 @@ js/
   data/textos.js            -> textos en español
   data/operators.js         -> RESERVA local (el backend es la fuente principal)
   data/mapas.js             -> mapas, puntos y bonus (fácil agregar más)
+  data/puntos-ataque.js     -> puntos de arranque de los atacantes por mapa
   services/api.js           -> único que habla con /api/*, con reserva automática
   logic/game-state.js       -> estado de la adivinanza
   logic/rasgos.js           -> 12 rasgos + familias, afinidades y mínimos por lado (ocultos)
