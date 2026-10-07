@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.16.0 (adivinanza + modo Partida + backend + BD ligera)
+# SIEGE DLE — v0.17.0 (adivinanza + modo Partida + fichas de operador + backend + BD ligera)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -20,6 +20,9 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
   actualizada con lo último del juego** (dump SQL, 78 operadores: rol, gadgets, velocidad,
   año, sexo y región con país). Ids, unidades (CTU) e iconos siguen siendo los locales.
 - Al adivinar salta el cartel de victoria con el nombre del operador y botón de otra ronda.
+- En la vista **Operadores** cada tarjeta es pulsable y abre una **ficha breve** del operador
+  (retrato grande, bando, unidad, rol, gadgets, velocidad, año, sexo y región), con cierre
+  por ✕, **Esc** o clic fuera y devolución del foco a la tarjeta (`js/components/ficha.js`).
 - Dedicatoria visible al clan TKOA + mensaje en cabecera y pie.
 
 ## Modo Partida (TÚ vs RIVAL, primero en 4)
@@ -72,7 +75,7 @@ js/
   logic/game-state.js       -> estado de la adivinanza
   logic/rasgos.js           -> 12 rasgos + familias, afinidades y mínimos por lado (ocultos)
   logic/partida.js          -> motor Partida: bans, draft, IA, simulación
-  components/               -> navigation, search, board, modal, toast, retrato, partida-ui
+  components/               -> navigation, search, board, modal, ficha, toast, retrato, partida-ui
   app.js                    -> arranque: api.cargarOperadores() y luego pinta
 backend/
   server.js                 -> sirve ../ frontal + /api/*, sin dependencias

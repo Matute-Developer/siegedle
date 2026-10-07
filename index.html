@@ -217,6 +217,20 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="modal-ficha" hidden>
+    <div class="modal modal-ficha hud-corners" role="dialog" aria-modal="true" aria-labelledby="ficha-titulo">
+      <div class="modal__head">
+        <span class="bando" id="ficha-bando">—</span>
+        <button class="iconbtn" id="btn-cerrar-ficha" type="button" aria-label="Cerrar ficha">✕</button>
+      </div>
+      <div class="ficha__retrato" id="ficha-retrato" aria-hidden="true"></div>
+      <h2 id="ficha-titulo">—</h2>
+      <p class="ficha__unidad" id="ficha-unidad">—</p>
+      <dl class="ficha__datos" id="ficha-datos"></dl>
+      <p class="muted ficha__pista">Pulsa ✕, Esc o fuera de la ficha para cerrarla.</p>
+    </div>
+  </div>
+
   <script src="js/config.js"></script>
   <script src="js/data/textos.js"></script>
   <script src="js/data/operators.js"></script>
@@ -230,6 +244,7 @@
   <script src="js/components/search.js"></script>
   <script src="js/components/board.js"></script>
   <script src="js/components/modal.js"></script>
+  <script src="js/components/ficha.js"></script>
   <script src="js/components/toast.js"></script>
   <script src="js/components/partida-ui.js"></script>
   <script src="js/app.js"></script>
