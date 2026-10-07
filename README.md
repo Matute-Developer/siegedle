@@ -3,6 +3,8 @@
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
 
+> **Dedicatoria: Nacho te amo ♥** — para el clan TKOA.
+
 ## Dos modos de uso
 1. **Sin instalar nada:** doble clic en `index.html`. Usa `js/data/operators.js` (reserva local, 76 operadores).
 2. **Con backend (recomendado):** `http://localhost:3000`. Usa SQLite (`backend/siege.db`)
