@@ -43,6 +43,7 @@
     reiniciar();
     window.SIEGE_DLE.search.init();
     window.SIEGE_DLE.modal.init();
+    if (window.SIEGE_DLE.ficha) window.SIEGE_DLE.ficha.init();
     window.SIEGE_DLE.navigation.mostrar(window.SIEGE_DLE.navigation.actual());
     // Intenta backend primero; si no hay servidor, usa datos locales sin romper nada.
     try {
