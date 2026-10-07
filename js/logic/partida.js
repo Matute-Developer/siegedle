@@ -94,10 +94,10 @@
   function motivoBan(id) {
     const op = porId(id);
     const rol = (op && op.rol) || "";
-    if (/Hard Breach|Breach/i.test(rol)) return "bloquea la apertura";
-    if (/Intel/i.test(rol)) return "niega información";
+    if (/Hard Breach|Breach|Brecha/i.test(rol)) return "bloquea la apertura";
+    if (/Intel|Inteligencia/i.test(rol)) return "niega información";
     if (/Roam/i.test(rol)) return "frena el roaming";
-    if (/Entry/i.test(rol)) return "corta la entrada";
+    if (/Entry|Vanguardia/i.test(rol)) return "corta la entrada";
     return "rompe tu plan";
   }
 

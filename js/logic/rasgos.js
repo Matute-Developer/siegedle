@@ -3,7 +3,7 @@
 (function () {
   const RASGOS = ["entry", "frag", "support", "breach", "intel", "antigadget", "roam", "anchor", "denial", "plant", "vertical", "flank"];
 
-  // [clave en minúsculas, {rasgo: puntos}]
+  // [clave en minúsculas, {rasgo: puntos}] — inglés (r6ops) y español (BD actual del juego).
   const REGLAS_ROL = [
     ["anti-intel", { antigadget: 1, intel: 1 }],
     ["entry fragger", { entry: 2, frag: 2 }],
@@ -20,36 +20,75 @@
     ["control of mass", { denial: 1, anchor: 1 }],
     ["vanguard", { entry: 1, frag: 1 }],
     ["flank watch", { flank: 2, intel: 1 }],
-    ["support", { support: 2, plant: 1 }]
+    ["support", { support: 2, plant: 1 }],
+    // --- español (la BD usa roles en español) ---
+    ["anti-brecha", { denial: 2, antigadget: 1 }],
+    ["anti-dispositivos", { antigadget: 2 }],
+    ["anti-escudos", { antigadget: 1 }],
+    ["brecha pesada", { breach: 2 }],
+    ["brecha", { breach: 1, vertical: 1 }],
+    ["escudo", { entry: 1, plant: 1 }],
+    ["cobertura", { flank: 2, intel: 1 }],
+    ["trampas", { denial: 2, flank: 1 }],
+    ["caza", { intel: 1, flank: 1 }],
+    ["sigilo", { roam: 2 }],
+    ["movilidad", { roam: 1, entry: 1 }],
+    ["engaño", { roam: 1, intel: 1 }],
+    ["soporte", { support: 2, plant: 1 }],
+    ["curación", { support: 2 }],
+    ["blindaje", { anchor: 2 }],
+    ["control de área", { denial: 2 }],
+    ["control de mapa", { denial: 1, anchor: 1 }],
+    ["control de masas", { denial: 1, anchor: 1 }],
+    ["control", { denial: 1 }]
   ];
 
+  // En minúsculas: se compara contra el gadget ya pasado a minúsculas y solo gana la
+  // clave más larga de cada pieza (así "carga de brecha pesada" no suma dos veces).
   const REGLAS_GADGET = [
-    ["Frag", { frag: 1 }],
-    ["Stun", { entry: 1 }],
-    ["Flash", { entry: 1 }],
-    ["Smoke", { plant: 1, denial: 1 }],
-    ["Claymore", { flank: 1 }],
-    ["Impact EMP", { antigadget: 1 }],
-    ["Breach Charge", { breach: 1 }],
-    ["Soft Breach", { breach: 1 }],
-    ["Hard Breach", { breach: 2 }],
-    ["C4", { frag: 1, denial: 1 }],
-    ["Barbed Wire", { denial: 1 }],
-    ["Deployable Shield", { anchor: 1, plant: 1 }],
-    ["Bulletproof", { intel: 1 }],
-    ["Proximity", { intel: 1, flank: 1 }],
-    ["Impacts", { breach: 1, entry: 1 }]
+    ["frag", { frag: 1 }],
+    ["stun", { entry: 1 }],
+    ["flash", { entry: 1 }],
+    ["granada cegadora", { entry: 1 }],
+    ["smoke", { plant: 1, denial: 1 }],
+    ["humo", { plant: 1, denial: 1 }],
+    ["claymore", { flank: 1 }],
+    ["impact emp", { antigadget: 1 }],
+    ["emp de impacto", { antigadget: 1 }],
+    ["breach charge", { breach: 1 }],
+    ["soft breach", { breach: 1 }],
+    ["hard breach", { breach: 2 }],
+    ["carga de brecha pesada", { breach: 2 }],
+    ["carga de brecha", { breach: 1 }],
+    ["c4", { frag: 1, denial: 1 }],
+    ["barbed wire", { denial: 1 }],
+    ["espino", { denial: 1 }],
+    ["barricada", { denial: 1 }],
+    ["deployable shield", { anchor: 1, plant: 1 }],
+    ["escudo desplegable", { anchor: 1, plant: 1 }],
+    ["bulletproof", { intel: 1 }],
+    ["cámara antibalas", { intel: 1 }],
+    ["bloqueador de pared", { antigadget: 1, intel: 1 }],
+    ["proximity", { intel: 1, flank: 1 }],
+    ["proximidad", { intel: 1, flank: 1 }],
+    ["impacts", { breach: 1, entry: 1 }],
+    ["granadas de impacto", { breach: 1, entry: 1 }],
+    ["impacto", { breach: 1, entry: 1 }],
+    ["depresor", { denial: 1, flank: 1 }]
   ];
 
   const PESOS_ATAQUE = { entry: 3, breach: 3, plant: 2, frag: 2, intel: 2, support: 2, antigadget: 2, vertical: 1, flank: 1, anchor: 1, denial: 1, roam: 1 };
-  const PESOS_DEFENSA = { anchor: 3, denial: 3, intel: 2, roam: 2, antigadget: 2, frag: 2, support: 1, entry: 1, plant: 0, breach: 0, vertical: 1, flank: 1 };
+  const PESOS_DEFENSA = { anchor: 3, denial: 4, intel: 3, roam: 3, antigadget: 2, frag: 2, support: 2, entry: 1, plant: 0, breach: 0, vertical: 1, flank: 1 };
 
   // Mínimos internos de una composición completa (5) por lado. No se muestran.
   // Sirven a la vez como objetivo: llegar a ellos suma, pasarse mucho suma cada vez menos,
   // y quedarse corto resta (así una composición extrema es mala sin ser una derrota automática).
+  // Calibrados contra la BD actual: los roles en español marcan menos intel y menos roam que
+  // la base anterior, así que esos objetivos bajan un punto; y como la defensa vive de la
+  // negación, la información y el roam, PESOS_DEFENSA los sube para que ambos lados queden parejos.
   const MINIMOS = {
     ataque: { breach: 5, entry: 5, intel: 4, plant: 2, antigadget: 3 },
-    defensa: { anchor: 2, denial: 7, intel: 5, roam: 4, support: 2 }
+    defensa: { anchor: 2, denial: 7, intel: 4, roam: 3, support: 2 }
   };
 
   // Afinidades entre rasgos: qué se complementa con qué (Thermite ↔ Thatcher, plant ↔ humo, etc.).
@@ -101,11 +140,22 @@
       const t = pedazo.trim().toLowerCase();
       REGLAS_ROL.forEach(([clave, pesos]) => {
         if (clave === "intel" && t.includes("anti-intel")) return;
+        // "anti-brecha" y "brecha pesada" ya traen su propio peso: no sumar la brecha suave encima.
+        if (clave === "brecha" && (t.includes("anti-brecha") || t.includes("brecha pesada"))) return;
+        // "control de área/mapa/masas" ya tiene su regla propia.
+        if (clave === "control" && t.includes("control de")) return;
         if (t.includes(clave)) sumar(r, pesos);
       });
     });
-    REGLAS_GADGET.forEach(([clave, pesos]) => {
-      if ((op.gadget || "").includes(clave)) sumar(r, pesos);
+    const g = (op.gadget || "").toLowerCase();
+    g.split(",").forEach((pedazo) => {
+      const t = pedazo.trim();
+      if (!t) return;
+      let mejor = null;
+      REGLAS_GADGET.forEach((regla) => {
+        if (t.includes(regla[0]) && (!mejor || regla[0].length > mejor[0].length)) mejor = regla;
+      });
+      if (mejor) sumar(r, mejor[1]);
     });
     if (op.velocidad === 3) sumar(r, { entry: 1, frag: 1 });
     if (op.velocidad === 1) sumar(r, { anchor: 1 });
@@ -142,16 +192,16 @@
 
   // Del texto del rol se extrae la familia real del operador (desempata empates de rasgos).
   const PALABRAS_ROL = {
-    hardbreach: ["hard breach", "soft breach"],
-    entry: ["entry"],
-    fragger: ["fragger", "angle watch"],
-    antigadget: ["utility clear"],
-    support: ["support"],
+    hardbreach: ["hard breach", "soft breach", "brecha"],
+    entry: ["entry", "vanguardia"],
+    fragger: ["fragger", "angle watch", "cobertura"],
+    antigadget: ["utility clear", "anti-dispositivos", "anti-brecha", "anti-escudos"],
+    support: ["support", "soporte", "curación"],
     plant: [],
-    intel: ["intel"],
-    roamer: ["roamer"],
-    anchor: [],
-    denial: ["denial", "trapper"]
+    intel: ["intel", "caza"],
+    roamer: ["roamer", "sigilo", "movilidad", "engaño"],
+    anchor: ["blindaje", "escudo"],
+    denial: ["denial", "trapper", "trampas", "control"]
   };
 
   // Familia dominante de un operador según sus rasgos (y su rol si hay empate).
@@ -161,7 +211,9 @@
     let mejor = null; let val = 0;
     ORDEN_FAMILIAS.forEach((f) => {
       const propio = FAMILIAS[f].rasgos.reduce((acc, t) => acc + (r[t] || 0), 0);
-      const menciona = PALABRAS_ROL[f].some((p) => rol.includes(p)) ? 1.5 : 0;
+      // "anti-brecha" es negación de apertura, no apertura: no puntúa como hardbreach.
+      const vale = !(f === "hardbreach" && rol.includes("anti-brecha"));
+      const menciona = vale && PALABRAS_ROL[f].some((p) => rol.includes(p)) ? 1.5 : 0;
       const s = propio + menciona;
       if (s > val) { val = s; mejor = f; }
     });
@@ -208,7 +260,8 @@
   function conAperturaDura(ids) {
     return (window.SIEGE_DLE.operators || [])
       .filter((o) => ids.includes(o.id))
-      .some((o) => /hard breach/i.test(o.rol || "") || (o.gadget || "").includes("Hard Breach"));
+      .some((o) => /hard breach|brecha pesada/i.test(o.rol || "")
+        || /hard breach|carga de brecha pesada/i.test(o.gadget || ""));
   }
 
   // Fuerza de un equipo en un lado dado: base por rasgos + cobertura + sinergia - huecos.
