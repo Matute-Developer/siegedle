@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Juego táctico de deducción inspirado en Rainbow Six Siege. Adivina el operador secreto." />
+  <meta name="theme-color" content="#0b0e13" />
+  <title>SIEGE DLE · Juego táctico de operadores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/partida.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" type="image/svg+xml" href="assets/icons.svg#mira" />
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-siege" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="topbar" id="topbar">
+    <div class="container topbar__inner">
+      <a class="brand" href="#/jugar" data-nav="jugar" aria-label="Ir al juego">
+        <span class="brand__mark" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="14.5" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="17" r="7.5" stroke="currentColor" stroke-width="1.5" opacity=".6"/><path d="M17 1v8M17 25v8M1 17h8M25 17h8" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="17" r="2" fill="currentColor"/></svg>
+        </span>
+        <span class="brand__text">
+          <strong>SIEGE&nbsp;DLE</strong>
+          <small>UNIDAD TÁCTICA</small>
+        </span>
+      </a>
+
+      <nav class="mainnav" id="mainnav" aria-label="Navegación principal">
+        <button class="navbtn is-active" data-nav="jugar" data-view-target="vista-jugar">
+          <span class="navbtn__dot" aria-hidden="true"></span>Jugar
+        </button>
+        <button class="navbtn" data-nav="operadores" data-view-target="vista-operadores">
+          <span class="navbtn__dot" aria-hidden="true"></span>Operadores
+        </button>
+        <button class="navbtn" data-nav="partida" data-view-target="vista-partida">
+          <span class="navbtn__dot" aria-hidden="true"></span>Partida
+        </button>
+      </nav>
+
+      <div class="topbar__actions">
+        <div class="season-chip" title="Dedicatoria del proyecto">
+          <span class="pulse" aria-hidden="true"></span>
+          DEDICADO AL CLAN TKOA
+        </div>
+        <button class="iconbtn" id="btn-ayuda" aria-label="Abrir ayuda" title="Cómo jugar">?</button>
+        <button class="iconbtn only-mobile" id="btn-menu" aria-label="Abrir menú" aria-expanded="false" title="Menú">
+          <span aria-hidden="true">☰</span>
+        </button>
+      </div>
+    </div>
+    <div class="dedication" role="note">
+      <div class="container dedication__inner">
+        <span>Proyecto dedicado al clan <strong>TKOA</strong></span>
+        <span class="dedication__love" aria-label="Nacho te amo">Nacho te amo ♥</span>
+      </div>
+    </div>
+    <div class="mobile-nav" id="mobile-nav" hidden>
+      <button class="navbtn is-active" data-nav="jugar">Jugar</button>
+      <button class="navbtn" data-nav="operadores">Operadores</button>
+      <button class="navbtn" data-nav="partida">Partida</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ============ VISTA: JUGAR ============ -->
+    <section class="view is-active" id="vista-jugar" aria-labelledby="titulo-jugar">
+      <div class="briefing">
+        <div class="briefing__head">
+          <span class="tag">INFORME DE MISIÓN</span>
+          <span class="briefing__date" id="fecha-hoy">—</span>
+        </div>
+        <h1 id="titulo-jugar">Adivina el operador correcto</h1>
+        <p class="muted">
+          Hay un operador secreto. Escribe un nombre y analízalo: cada celda se pinta
+          de <strong class="txt-ok">verde si coincide</strong> y de
+          <strong class="txt-bad">rojo si no coincide</strong>. En el año, la flecha
+          indica si el objetivo es posterior (▲) o anterior (▼). Sin límite de análisis.
+        </p>
+        <div class="briefing__meta">
+          <div class="meta"><span>MODO</span><strong>Deducción</strong></div>
+          <div class="meta"><span>ANÁLISIS</span><strong id="intentos-realizados">0</strong></div>
+          <div class="meta"><span>FUENTE</span><strong id="origen-datos">Local</strong></div>
+        </div>
+      </div>
+
+      <div class="game-panel hud-corners">
+        <div class="search-block">
+          <label class="search-label" for="buscador">Elige un operador</label>
+          <div class="search-wrap">
+            <span class="search-icon" aria-hidden="true">⌖</span>
+            <input
+              id="buscador"
+              class="search-input"
+              type="text"
+              placeholder="Escribe para buscar… p. ej. Ash, Mira, Jäger"
+              autocomplete="off"
+              role="combobox"
+              aria-expanded="false"
+              aria-controls="lista-sugerencias"
+              aria-autocomplete="list" />
+            <button class="btn btn-primary" id="btn-analizar" type="button">Analizar</button>
+          </div>
+          <ul class="suggestions" id="lista-sugerencias" role="listbox" aria-label="Operadores sugeridos" hidden></ul>
+          <p class="hint" id="mensaje-buscador">Verde = coincide. Rojo = no coincide. ▲ posterior · ▼ anterior.</p>
+        </div>
+
+        <div class="veredicto" id="resultado-ronda" hidden></div>
+
+        <div class="table-wrap">
+          <table class="board" id="tabla-intentos" aria-label="Historial de análisis">
+            <thead>
+              <tr>
+                <th scope="col">Icono</th>
+                <th scope="col">Operador</th>
+                <th scope="col">Bando</th>
+                <th scope="col">Rol</th>
+                <th scope="col">Sexo</th>
+                <th scope="col">Continente</th>
+                <th scope="col">Año</th>
+                <th scope="col">Velocidad</th>
+                <th scope="col">Gadget</th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-tabla">
+              <tr class="empty-row">
+                <td colspan="9">
+                  <div class="empty">
+                    <div class="empty__icon" aria-hidden="true">◈</div>
+                    <p><strong>Sin análisis todavía.</strong></p>
+                    <p class="muted">Tu historial táctico aparecerá aquí. Cada fila es una pista.</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel-foot">
+          <button class="btn btn-ghost" id="btn-reiniciar" type="button">Nueva ronda</button>
+          <p class="disclaimer-inline">Proyecto de fans dedicado al clan TKOA. No oficial. No afiliado a Ubisoft.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VISTA: OPERADORES ============ -->
+    <section class="view" id="vista-operadores" aria-labelledby="titulo-operadores" hidden>
+      <div class="briefing">
+        <div class="briefing__head"><span class="tag">BASE DE DATOS</span><span class="briefing__date"><span id="total-operadores">—</span> OPERADORES</span></div>
+        <h2 id="titulo-operadores">Todos los operadores</h2>
+        <p class="muted">Plantilla completa del juego. Busca y filtra por bando.</p>
+        <div class="filters">
+          <button class="chip is-active" data-filtro="todos" type="button">Todos</button>
+          <button class="chip" data-filtro="atacante" type="button">Atacantes</button>
+          <button class="chip" data-filtro="defensor" type="button">Defensores</button>
+        </div>
+      </div>
+      <div class="ops-grid" id="ops-grid"></div>
+    </section>
+
+    <!-- ============ VISTA: PARTIDA ============ -->
+    <section class="view" id="vista-partida" aria-labelledby="titulo-partida" hidden>
+      <div class="briefing">
+        <div class="briefing__head">
+          <span class="tag">MODO PARTIDA</span>
+          <span class="briefing__date">TÚ VS RIVAL · GANA QUIEN LLEGUE A 4</span>
+        </div>
+        <h2 id="titulo-partida">Partida completa: bans, draft y rondas</h2>
+        <p class="muted">Baneá, drafteá tu equipo de 5, y ganá rondas de ataque y defensa. Tus decisiones cambian las probabilidades.</p>
+      </div>
+      <div id="partida-contenido" style="margin-top:1rem"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__inner">
+      <p><strong>SIEGE DLE</strong> · Proyecto de fans dedicado al clan <strong>TKOA</strong>.</p>
+      <p class="footer__love">Nacho te amo ♥</p>
+      <p class="muted">No es un producto oficial. No está afiliado ni respaldado por Ubisoft. Nombres y conceptos pertenecen a sus respectivos dueños.</p>
+    </div>
+  </footer>
+
+  <div class="modal-backdrop" id="modal-ayuda" hidden>
+    <div class="modal hud-corners" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <div class="modal__head">
+        <h2 id="modal-titulo">Cómo jugar</h2>
+        <button class="iconbtn" id="btn-cerrar-ayuda" aria-label="Cerrar ayuda">✕</button>
+      </div>
+      <p class="muted">Hay un operador secreto. Analiza nombres sin límite hasta confirmarlo.</p>
+      <ul class="modal__list">
+        <li>Busca un operador y pulsa <strong>Analizar</strong>.</li>
+        <li><strong class="txt-ok">Verde</strong> = la pista coincide. <strong class="txt-bad">Rojo</strong> = no coincide.</li>
+        <li>En el año, <strong>▲</strong> indica objetivo posterior y <strong>▼</strong> anterior.</li>
+      </ul>
+      <button class="btn btn-primary btn-block" id="btn-empezar" type="button">Entendido, a jugar</button>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="true"></div>
+
+  <div class="modal-backdrop" id="modal-victoria" hidden>
+    <div class="modal modal-victoria hud-corners" role="dialog" aria-modal="true" aria-labelledby="victoria-titulo">
+      <div class="victoria__retrato" id="victoria-retrato" aria-hidden="true"></div>
+      <h2 id="victoria-titulo">Felicitaciones, sos un crack</h2>
+      <p class="victoria__texto">Adivinaste el <strong id="victoria-nombre">—</strong>.</p>
+      <p class="muted">Dedicado al clan TKOA.</p>
+      <button class="btn btn-primary btn-block" id="btn-otra-ronda" type="button">Jugar otra ronda</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/data/textos.js"></script>
+  <script src="js/data/operators.js"></script>
+  <script src="js/services/api.js"></script>
+  <script src="js/components/retrato.js"></script>
+  <script src="js/data/mapas.js"></script>
+  <script src="js/logic/game-state.js"></script>
+  <script src="js/logic/rasgos.js"></script>
+  <script src="js/logic/partida.js"></script>
+  <script src="js/components/navigation.js"></script>
+  <script src="js/components/search.js"></script>
+  <script src="js/components/board.js"></script>
+  <script src="js/components/modal.js"></script>
+  <script src="js/components/toast.js"></script>
+  <script src="js/components/partida-ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
