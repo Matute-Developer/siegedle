@@ -1,6 +1,8 @@
-/* Motor del modo Partida: bans por ronda (acumulativos), draft por lado, IA y simulación.
-   Cada ronda: vos baneás 1 del bando rival, el rival banea 1 del tuyo, draftean 5 cada uno
-   (solo atacantes si atacás, solo defensores si defendés) y se simula con 2 decisiones. */
+/* Motor del modo Partida: punto por ronda (bloqueado si lo ganaste), bans por ronda
+   (acumulativos), draft por lado, IA y simulación.
+   Cada ronda: se elige el punto, vos baneás 1 del bando rival, el rival banea 1 del tuyo,
+   draftean 5 cada uno (solo atacantes si atacás, solo defensores si defendés) y se simula
+   con 2 decisiones. */
 (function () {
   const META_ATK = ["thermite", "thatcher", "ace", "hibana", "maverick", "ash", "dokkaebi", "lion", "iana", "zero"];
   const META_DEF = ["jager", "bandit", "kaid", "smoke", "mira", "valkyrie", "mozzie", "azami", "mute", "fenrir"];
@@ -12,8 +14,11 @@
     equilibrado: { nombre: "Equilibrado", desc: "Sin debilidades claras.", pesos: null }
   };
 
+  // sitio: punto de la ronda en curso (string), sitioIdx: su índice en mapa.sitios,
+  // sitiosGanados: índices de los puntos donde el jugador ganó una ronda (quedan bloqueados).
   const state = {
-    fase: "mapa", mapa: null, sitio: null, estiloIA: "equilibrado", empieza: "ataque",
+    fase: "mapa", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [],
+    estiloIA: "equilibrado", empieza: "ataque",
     vetados: [],
     equipoJ: [], equipoIA: [], opciones: [],
     rondas: [], puntosJ: 0, puntosIA: 0, rondaNum: 0, ronda: null
@@ -33,7 +38,33 @@
     const candidatos = mapas.filter((m) => m.id !== ultimo);
     const mapa = alAzar(candidatos.length ? candidatos : mapas);
     try { localStorage.setItem("siegedle_ultimo_mapa", mapa.id); } catch { /* sin almacenamiento */ }
-    return { mapa, sitio: alAzar(mapa.sitios) };
+    return mapa;
+  }
+
+  // ---------- PUNTO DE LA RONDA ----------
+  // Cada ronda se juega en un punto del mapa. Si defendés lo elegís vos; si atacás lo elige
+  // el rival. El punto donde ganaste queda bloqueado para el resto de la partida;
+  // si perdiste, sigue disponible y se puede volver a elegir.
+  function sitiosDisponibles() {
+    const sitios = (state.mapa && state.mapa.sitios) || [];
+    return sitios.map((_, i) => i).filter((i) => !state.sitiosGanados.includes(i));
+  }
+
+  function sitioBloqueado(i) { return state.sitiosGanados.includes(i); }
+
+  function elegirSitioJ(i) {
+    const sitios = (state.mapa && state.mapa.sitios) || [];
+    if (!Number.isInteger(i) || i < 0 || i >= sitios.length) return false;
+    if (sitioBloqueado(i)) return false;
+    state.sitioIdx = i;
+    state.sitio = sitios[i];
+    return true;
+  }
+
+  function elegirSitioIA() {
+    const disp = sitiosDisponibles();
+    if (!disp.length) return false;
+    return elegirSitioJ(alAzar(disp));
   }
 
   function nuevoPartido() {
@@ -45,8 +76,9 @@
       state.empieza = ultimo === "ataque" ? "defensa" : "ataque";
       localStorage.setItem("siegedle_empieza", state.empieza);
     } catch { state.empieza = state.empieza === "ataque" ? "defensa" : "ataque"; }
-    const { mapa, sitio } = elegirMapa();
-    state.mapa = mapa; state.sitio = sitio;
+    const mapa = elegirMapa();
+    state.mapa = mapa;
+    state.sitio = null; state.sitioIdx = null; state.sitiosGanados = [];
     state.vetados = [];
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
     state.rondas = []; state.puntosJ = 0; state.puntosIA = 0; state.rondaNum = 0; state.ronda = null;
@@ -310,7 +342,7 @@
     const atk = lado === "ataque";
     const J = state.equipoJ; const R = state.equipoIA;
     const evs = [];
-    evs.push({ tipo: "mapa", texto: `Fase de preparación en ${state.mapa.nombre} — ${state.sitio.nombre}.` });
+    evs.push({ tipo: "mapa", texto: `Fase de preparación en ${state.mapa.nombre} — ${state.sitio}.` });
     evs.push({ tipo: "prep", texto: atk ? "Tu equipo prepara la entrada al sitio." : "Tu equipo refuerza el sitio y esconde trampas." });
     const intelJ = topRasgo(J, "intel");
     const intelR = topRasgo(R, "intel");
@@ -423,16 +455,28 @@
     state.ronda.prob = prob;
     const ganada = Math.random() < prob;
     state.ronda.resultado = ganada ? "victoria" : "derrota";
-    if (ganada) state.puntosJ += 1; else state.puntosIA += 1;
-    state.rondas.push({ num: state.rondaNum, lado: state.ronda.lado, resultado: state.ronda.resultado });
+    if (ganada) {
+      state.puntosJ += 1;
+      // Punto ganado: queda bloqueado y no se vuelve a jugar en esta partida.
+      if (state.sitioIdx !== null && !state.sitiosGanados.includes(state.sitioIdx)) {
+        state.sitiosGanados.push(state.sitioIdx);
+      }
+    } else {
+      state.puntosIA += 1;
+    }
+    state.rondas.push({
+      num: state.rondaNum, lado: state.ronda.lado,
+      resultado: state.ronda.resultado, sitio: state.sitio
+    });
     const fin = state.puntosJ >= 4 || state.puntosIA >= 4;
     if (fin) state.fase = "fin";
-    return { ganada, prob, fin };
+    return { ganada, prob, fin, sitio: state.sitio, puntoBloqueado: ganada };
   }
 
   function prepararRonda() {
-    // Limpia equipos de la ronda anterior; los vetos se conservan.
+    // Limpia equipos y punto de la ronda anterior; los vetos y los puntos ganados se conservan.
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
+    state.sitio = null; state.sitioIdx = null;
   }
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
@@ -440,6 +484,7 @@
     state, ESTILOS, DECISIONES, nuevoPartido, candidatosBan, motivoBan, nombre,
     banRival, ladoProximo, ladoRival, bandoDeLado,
     opcionesDraft, generarEquipoIA, iniciarRonda, aplicarDecision, resolverRonda,
-    ladoDeRonda, prepararRonda, pronostico, probActual, probPartido
+    ladoDeRonda, prepararRonda, pronostico, probActual, probPartido,
+    sitiosDisponibles, sitioBloqueado, elegirSitioJ, elegirSitioIA
   };
 })();
