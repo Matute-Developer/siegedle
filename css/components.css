@@ -80,8 +80,12 @@
 /* Ficha de operador (galería) */
 .modal-ficha { text-align: center; animation: ficha-entra .18s ease-out; max-height: calc(100vh - 2rem); overflow-y: auto; }
 @keyframes ficha-entra { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
-.ficha__retrato { display: flex; justify-content: center; margin: .9rem 0 .5rem; }
+.ficha__cuerpo { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 1rem; align-items: start; text-align: left; }
+.ficha__retrato { display: flex; justify-content: center; margin: .85rem 0 0; }
 .ficha__retrato .retrato { width: 92px; height: 92px; border-width: 3px; }
+.ficha__retrato-img { display: block; width: 168px; height: auto; max-height: 300px; object-fit: cover; object-position: top center; border-radius: 14px; border: 2px solid var(--line); background: var(--panel2); box-shadow: var(--shadow); }
+.ficha__info { min-width: 0; }
+.ficha__info h2 { margin: .55rem 0 .1rem; }
 .ficha__unidad { margin: .1rem 0 .9rem; color: var(--muted); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; }
 .ficha__datos { display: grid; gap: .5rem; margin: 0; text-align: left; }
 .ficha__fila { display: flex; justify-content: space-between; align-items: center; gap: .9rem; padding: .55rem .75rem; background: var(--panel2); border: 1px solid var(--line-soft); border-radius: 10px; }

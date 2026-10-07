@@ -13,3 +13,10 @@
 @media (min-width: 901px) {
   .mobile-nav { display: none !important; }
 }
+@media (max-width: 560px) {
+  .ficha__cuerpo { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .ficha__retrato { margin-top: .6rem; }
+  .ficha__retrato-img { width: 150px; }
+  .ficha__info { width: 100%; }
+  .ficha__datos { text-align: left; }
+}
