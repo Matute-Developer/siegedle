@@ -47,10 +47,12 @@
 .stat { font-family: var(--font-d); font-size: 2rem; }
 
 .ops-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .9rem; margin-top: 1rem; }
-.op-card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 1rem; display: flex; gap: .8rem; align-items: center; transition: transform .15s, border-color .15s; }
-.op-card:hover { transform: translateY(-2px); border-color: var(--accent); }
-.op-card h3 { margin: 0; font-size: 1.25rem; }
-.op-card p { margin: 0; font-size: .8rem; }
+.op-card { background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 1rem; display: flex; gap: .8rem; align-items: center; transition: transform .15s, border-color .15s; width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.op-card:hover, .op-card:focus-visible { transform: translateY(-2px); border-color: var(--accent); outline: none; }
+.op-card:focus-visible { box-shadow: 0 0 0 2px var(--accent-dim); }
+.op-card__text { display: grid; gap: .15rem; min-width: 0; }
+.op-card__nombre { font-weight: 700; font-size: 1.25rem; }
+.op-card__meta { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
 
 .filters { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
 .chip { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: .45rem 1rem; cursor: pointer; font-weight: 600; }
@@ -74,6 +76,21 @@
 .victoria__retrato { display: flex; justify-content: center; margin-bottom: .6rem; }
 .victoria__retrato .retrato { width: 84px; height: 84px; border-width: 3px; }
 .victoria__texto { font-size: 1.1rem; }
+
+/* Ficha de operador (galería) */
+.modal-ficha { text-align: center; animation: ficha-entra .18s ease-out; max-height: calc(100vh - 2rem); overflow-y: auto; }
+@keyframes ficha-entra { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+.ficha__retrato { display: flex; justify-content: center; margin: .9rem 0 .5rem; }
+.ficha__retrato .retrato { width: 92px; height: 92px; border-width: 3px; }
+.ficha__unidad { margin: .1rem 0 .9rem; color: var(--muted); font-size: .74rem; letter-spacing: .14em; text-transform: uppercase; }
+.ficha__datos { display: grid; gap: .5rem; margin: 0; text-align: left; }
+.ficha__fila { display: flex; justify-content: space-between; align-items: center; gap: .9rem; padding: .55rem .75rem; background: var(--panel2); border: 1px solid var(--line-soft); border-radius: 10px; }
+.ficha__fila dt { margin: 0; color: var(--muted); font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; flex-shrink: 0; }
+.ficha__fila dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.ficha__chips { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; }
+.ficha__chip { font-size: .74rem; font-weight: 600; color: var(--text); background: var(--accent-dim); border: 1px solid var(--line); border-radius: 999px; padding: .18rem .55rem; }
+.ficha__vel { color: var(--accent); letter-spacing: .12em; }
+.ficha__pista { margin: .9rem 0 0; font-size: .78rem; }
 
 .txt-ok { color: var(--green); }
 .txt-bad { color: var(--red); }
