@@ -1,8 +1,9 @@
-/* Motor del modo Partida: punto por ronda (bloqueado si lo ganaste), bans por ronda
-   (acumulativos), draft por lado, IA y simulación.
-   Cada ronda: se elige el punto, vos baneás 1 del bando rival, el rival banea 1 del tuyo,
-   draftean 5 cada uno (solo atacantes si atacás, solo defensores si defendés) y se simula
-   con 2 decisiones. */
+/* Motor del modo Partida: veto de mapa (5 candidatos, cada equipo banea 1 y el jugador
+   elige entre los 3 restantes), punto por ronda (lo elige SIEMPRE el equipo defensor;
+   si lo ganaste queda bloqueado), bans por ronda (acumulativos), draft por lado, IA y
+   simulación. Cada ronda: se elige el punto, vos baneás 1 del bando rival, el rival banea
+   1 del tuyo, draftean 5 cada uno (solo atacantes si atacás, solo defensores si defendés)
+   y se simula con 2 decisiones. */
 (function () {
   const META_ATK = ["thermite", "thatcher", "ace", "hibana", "maverick", "ash", "dokkaebi", "lion", "iana", "zero"];
   const META_DEF = ["jager", "bandit", "kaid", "smoke", "mira", "valkyrie", "mozzie", "azami", "mute", "fenrir"];
@@ -14,10 +15,13 @@
     equilibrado: { nombre: "Equilibrado", desc: "Sin debilidades claras.", pesos: null }
   };
 
+  // fase: vetoMapa -> elegirMapa -> mapa -> sitio -> bans -> draft -> previa -> ronda -> fin.
+  // mapasCandidatos: 5 ids para el veto; vetoMapa/vetoMapaRival: un id por equipo.
   // sitio: punto de la ronda en curso (string), sitioIdx: su índice en mapa.sitios,
   // sitiosGanados: índices de los puntos donde el jugador ganó una ronda (quedan bloqueados).
   const state = {
-    fase: "mapa", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [],
+    fase: "vetoMapa", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [],
+    mapasCandidatos: [], vetoMapaJ: null, vetoMapaRival: null,
     estiloIA: "equilibrado", empieza: "ataque",
     vetados: [],
     equipoJ: [], equipoIA: [], opciones: [],
@@ -31,14 +35,53 @@
   function ladoRival(lado) { return lado === "ataque" ? "defensa" : "ataque"; }
   function bandoDeLado(lado) { return lado === "ataque" ? "atacante" : "defensor"; }
 
-  function elegirMapa() {
+  // ---------- VETO DE MAPA (previo a la partida) ----------
+  // Salen 5 mapas candidatos (sin repetir el último jugado). El jugador banea 1, el rival
+  // banea 1 distinto y el jugador elige con qué mapa de los 3 restantes se juega.
+  function mapaPorId(id) { return (window.SIEGE_DLE.mapas || []).find((m) => m.id === id) || null; }
+
+  function prepararMapas() {
     const mapas = window.SIEGE_DLE.mapas || [];
     let ultimo = null;
     try { ultimo = localStorage.getItem("siegedle_ultimo_mapa"); } catch { /* sin almacenamiento */ }
-    const candidatos = mapas.filter((m) => m.id !== ultimo);
-    const mapa = alAzar(candidatos.length ? candidatos : mapas);
+    const bolsa = mapas.filter((m) => m.id !== ultimo).slice();
+    const elegidos = [];
+    while (elegidos.length < 5 && bolsa.length) {
+      elegidos.push(bolsa.splice(Math.floor(Math.random() * bolsa.length), 1)[0]);
+    }
+    state.mapasCandidatos = elegidos.map((m) => m.id);
+    state.vetoMapaJ = null;
+    state.vetoMapaRival = null;
+  }
+
+  function mapaVetado(id) { return state.vetoMapaJ === id || state.vetoMapaRival === id; }
+
+  function mapasDisponibles() {
+    return (state.mapasCandidatos || []).filter((id) => !mapaVetado(id));
+  }
+
+  function vetoMapaJ(id) {
+    if (!state.mapasCandidatos.includes(id) || state.vetoMapaJ) return false;
+    state.vetoMapaJ = id;
+    return true;
+  }
+
+  function vetoMapaRival() {
+    if (state.vetoMapaRival) return state.vetoMapaRival;
+    const libres = state.mapasCandidatos.filter((id) => id !== state.vetoMapaJ);
+    if (!libres.length) return null;
+    state.vetoMapaRival = alAzar(libres);
+    return state.vetoMapaRival;
+  }
+
+  // El jugador elige con qué mapa de los que quedaron en pie se juega la partida.
+  function elegirMapa(id) {
+    if (!mapasDisponibles().includes(id)) return false;
+    const mapa = mapaPorId(id);
+    if (!mapa) return false;
+    state.mapa = mapa;
     try { localStorage.setItem("siegedle_ultimo_mapa", mapa.id); } catch { /* sin almacenamiento */ }
-    return mapa;
+    return true;
   }
 
   // ---------- PUNTO DE LA RONDA ----------
@@ -53,6 +96,20 @@
   function sitioBloqueado(i) { return state.sitiosGanados.includes(i); }
 
   function elegirSitioJ(i) {
+    // Solo el equipo defensor elige el punto: si vas a atacar, no se puede fijar.
+    if (ladoProximo() === "ataque") return false;
+    return fijarSitio(i);
+  }
+
+  function elegirSitioIA() {
+    // La IA solo pone el punto cuando ella es la defensora (es decir, cuando jugás vos al ataque).
+    if (ladoProximo() !== "ataque") return false;
+    const disp = sitiosDisponibles();
+    if (!disp.length) return false;
+    return fijarSitio(alAzar(disp));
+  }
+
+  function fijarSitio(i) {
     const sitios = (state.mapa && state.mapa.sitios) || [];
     if (!Number.isInteger(i) || i < 0 || i >= sitios.length) return false;
     if (sitioBloqueado(i)) return false;
@@ -61,14 +118,8 @@
     return true;
   }
 
-  function elegirSitioIA() {
-    const disp = sitiosDisponibles();
-    if (!disp.length) return false;
-    return elegirSitioJ(alAzar(disp));
-  }
-
   function nuevoPartido() {
-    state.fase = "mapa";
+    state.fase = "vetoMapa";
     state.estiloIA = alAzar(Object.keys(ESTILOS));
     // Alterna quién empieza entre partidas.
     try {
@@ -76,8 +127,8 @@
       state.empieza = ultimo === "ataque" ? "defensa" : "ataque";
       localStorage.setItem("siegedle_empieza", state.empieza);
     } catch { state.empieza = state.empieza === "ataque" ? "defensa" : "ataque"; }
-    const mapa = elegirMapa();
-    state.mapa = mapa;
+    prepararMapas();
+    state.mapa = null;
     state.sitio = null; state.sitioIdx = null; state.sitiosGanados = [];
     state.vetados = [];
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
@@ -485,6 +536,7 @@
     banRival, ladoProximo, ladoRival, bandoDeLado,
     opcionesDraft, generarEquipoIA, iniciarRonda, aplicarDecision, resolverRonda,
     ladoDeRonda, prepararRonda, pronostico, probActual, probPartido,
-    sitiosDisponibles, sitioBloqueado, elegirSitioJ, elegirSitioIA
+    sitiosDisponibles, sitioBloqueado, elegirSitioJ, elegirSitioIA,
+    mapaPorId, prepararMapas, mapaVetado, mapasDisponibles, vetoMapaJ, vetoMapaRival, elegirMapa
   };
 })();
