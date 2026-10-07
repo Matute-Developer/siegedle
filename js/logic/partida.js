@@ -1,9 +1,10 @@
-/* Motor del modo Partida: veto de mapa (5 candidatos, cada equipo banea 1 y el jugador
-   elige entre los 3 restantes), punto por ronda (lo elige SIEMPRE el equipo defensor;
-   si lo ganaste queda bloqueado), bans por ronda (acumulativos), draft por lado, IA y
-   simulación. Cada ronda: se elige el punto, vos baneás 1 del bando rival, el rival banea
-   1 del tuyo, draftean 5 cada uno (solo atacantes si atacás, solo defensores si defendés)
-   y se simula con 2 decisiones. */
+/* Motor del modo Partida: veto de mapa (5 candidatos, cada equipo banea 1) y después
+   SORTEO aleatorio del mapa entre los 3 que quedan. Por ronda: el punto de bomba lo fija
+   SIEMPRE el equipo defensor (si el jugador lo ganó, queda bloqueado) y el punto de arranque
+   lo fija el equipo atacante; bans por ronda (acumulativos), draft por lado, IA y simulación.
+   Cada ronda: se fija punto y arranque, vos baneás 1 del bando rival, el rival banea 1 del
+   tuyo, draftean 5 cada uno (solo atacantes si atacás, solo defensores si defendés) y se
+   simula con 2 decisiones. */
 (function () {
   const META_ATK = ["thermite", "thatcher", "ace", "hibana", "maverick", "ash", "dokkaebi", "lion", "iana", "zero"];
   const META_DEF = ["jager", "bandit", "kaid", "smoke", "mira", "valkyrie", "mozzie", "azami", "mute", "fenrir"];
@@ -15,12 +16,13 @@
     equilibrado: { nombre: "Equilibrado", desc: "Sin debilidades claras.", pesos: null }
   };
 
-  // fase: vetoMapa -> elegirMapa -> mapa -> sitio -> bans -> draft -> previa -> ronda -> fin.
-  // mapasCandidatos: 5 ids para el veto; vetoMapa/vetoMapaRival: un id por equipo.
-  // sitio: punto de la ronda en curso (string), sitioIdx: su índice en mapa.sitios,
-  // sitiosGanados: índices de los puntos donde el jugador ganó una ronda (quedan bloqueados).
+  // fase: inicio -> vetoMapa -> sorteo -> mapa -> sitio -> bans -> draft -> previa -> ronda -> fin.
+  // mapasCandidatos: 5 ids para el veto; vetoMapaJ/vetoMapaRival: un id por equipo.
+  // sitio: punto de bomba de la ronda (lo fija el defensor), sitioIdx: su índice en mapa.sitios,
+  // sitiosGanados: índices de los puntos donde el jugador ganó (quedan bloqueados),
+  // spawn: punto de arranque de la ronda (lo fija el atacante).
   const state = {
-    fase: "vetoMapa", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [],
+    fase: "inicio", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [], spawn: null,
     mapasCandidatos: [], vetoMapaJ: null, vetoMapaRival: null,
     estiloIA: "equilibrado", empieza: "ataque",
     vetados: [],
@@ -118,6 +120,35 @@
     return true;
   }
 
+  // ---------- PUNTO DE ARRANQUE (ATAQUE) ----------
+  // Los atacantes eligen desde dónde entran a la ronda. Es el espejo del punto de bomba:
+  // lo fija siempre el equipo que ataca (si atacás lo elegís vos; si defendés lo elige la IA).
+  function puntosSpawn() {
+    const lista = window.SIEGE_DLE.puntosAtaque || [];
+    const fila = state.mapa ? lista.find((e) => e.mapa === state.mapa.id) : null;
+    return fila ? fila.puntos : [];
+  }
+
+  function elegirSpawnJ(nombre) {
+    // Solo el atacante fija su arranque: si vas a defender, no podés tocarlo.
+    if (ladoProximo() !== "ataque") return false;
+    return fijarSpawn(nombre);
+  }
+
+  function elegirSpawnIA() {
+    // La IA solo pone el arranque cuando ella ataca (es decir, cuando jugás vos a la defensa).
+    if (ladoProximo() === "ataque") return false;
+    const disp = puntosSpawn();
+    if (!disp.length) return false;
+    return fijarSpawn(alAzar(disp));
+  }
+
+  function fijarSpawn(nombre) {
+    if (!puntosSpawn().includes(nombre)) return false;
+    state.spawn = nombre;
+    return true;
+  }
+
   function nuevoPartido() {
     state.fase = "vetoMapa";
     state.estiloIA = alAzar(Object.keys(ESTILOS));
@@ -130,6 +161,7 @@
     prepararMapas();
     state.mapa = null;
     state.sitio = null; state.sitioIdx = null; state.sitiosGanados = [];
+    state.spawn = null;
     state.vetados = [];
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
     state.rondas = []; state.puntosJ = 0; state.puntosIA = 0; state.rondaNum = 0; state.ronda = null;
@@ -517,17 +549,18 @@
     }
     state.rondas.push({
       num: state.rondaNum, lado: state.ronda.lado,
-      resultado: state.ronda.resultado, sitio: state.sitio
+      resultado: state.ronda.resultado, sitio: state.sitio, spawn: state.spawn
     });
     const fin = state.puntosJ >= 4 || state.puntosIA >= 4;
     if (fin) state.fase = "fin";
-    return { ganada, prob, fin, sitio: state.sitio, puntoBloqueado: ganada };
+    return { ganada, prob, fin, sitio: state.sitio, spawn: state.spawn, puntoBloqueado: ganada };
   }
 
   function prepararRonda() {
-    // Limpia equipos y punto de la ronda anterior; los vetos y los puntos ganados se conservan.
+    // Limpia equipos, punto y arranque de la ronda anterior; los vetos y los puntos ganados se conservan.
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
     state.sitio = null; state.sitioIdx = null;
+    state.spawn = null;
   }
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
@@ -537,6 +570,7 @@
     opcionesDraft, generarEquipoIA, iniciarRonda, aplicarDecision, resolverRonda,
     ladoDeRonda, prepararRonda, pronostico, probActual, probPartido,
     sitiosDisponibles, sitioBloqueado, elegirSitioJ, elegirSitioIA,
-    mapaPorId, prepararMapas, mapaVetado, mapasDisponibles, vetoMapaJ, vetoMapaRival, elegirMapa
+    mapaPorId, prepararMapas, mapaVetado, mapasDisponibles, vetoMapaJ, vetoMapaRival, elegirMapa,
+    puntosSpawn, elegirSpawnJ, elegirSpawnIA
   };
 })();
