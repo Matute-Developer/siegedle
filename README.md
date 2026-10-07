@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.17.0 (adivinanza + modo Partida + fichas de operador + backend + BD ligera)
+# SIEGE DLE — v0.18.0 (adivinanza + modo Partida + fichas con retrato + backend + BD ligera)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -15,14 +15,18 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
 - Objetivo secreto aleatorio en cada ronda (`js/logic/game-state.js`).
 - Análisis ilimitados, el último siempre arriba. Cada celda se pinta de **verde si coincide** y **rojo si no coincide**.
 - La columna Año indica con **▲** (objetivo posterior) o **▼** (objetivo anterior).
-- Columna Icono con el retrato del operador (`js/components/retrato.js`; sin imagen muestra iniciales).
+- Columna Icono con el retrato del operador (`js/components/retrato.js`): 68 del CDN, 10 locales en
+  `imagenes/` (Striker y Sentry sumados en v0.17.1) y solo quedan en iniciales si no hay ninguna fuente.
 - Columnas Rol y Gadget con la lista completa por operador, tomadas de la **base de datos
   actualizada con lo último del juego** (dump SQL, 78 operadores: rol, gadgets, velocidad,
   año, sexo y región con país). Ids, unidades (CTU) e iconos siguen siendo los locales.
 - Al adivinar salta el cartel de victoria con el nombre del operador y botón de otra ronda.
-- En la vista **Operadores** cada tarjeta es pulsable y abre una **ficha breve** del operador
-  (retrato grande, bando, unidad, rol, gadgets, velocidad, año, sexo y región), con cierre
-  por ✕, **Esc** o clic fuera y devolución del foco a la tarjeta (`js/components/ficha.js`).
+- En la vista **Operadores** cada tarjeta es pulsable y abre una **ficha breve** del operador:
+  **retrato completo** (`imagenes/retrato-*.jpg`, los 78 de r6.skin reescalados a 300 px, ~2,5 MB
+  en total), bando, unidad, rol, gadgets, velocidad, año, sexo y región. Cierre por ✕, **Esc** o
+  clic fuera y devolución del foco a la tarjeta (`js/components/ficha.js`). Si un retrato no
+  carga, la ficha vuelve sola al avatar circular; en la galería, el tablero y la Partida sigue
+  viendo el icono de siempre.
 - Dedicatoria visible al clan TKOA + mensaje en cabecera y pie.
 
 ## Modo Partida (TÚ vs RIVAL, primero en 4)
@@ -65,6 +69,7 @@ Manual: `cd backend` → `node server.js --port=3000`.
 ## Estructura
 ```
 index.html                  -> 3 vistas (#/jugar, #/operadores, #/partida)
+imagenes/                   -> retratos (retrato-*.jpg) + badges locales (r6s-operators-badge-*)
 css/                        -> variables, base, layout, components, animations, responsive
 js/
   config.js                 -> ajustes globales
