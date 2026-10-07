@@ -6,5 +6,16 @@ window.SIEGE_DLE.textos = {
   yaRegistrado: "Ese operador ya está en tu historial.",
   eligeOperador: "Elige primero un operador de la lista.",
   rondaReiniciada: "Nueva ronda. Objetivo secreto renovado.",
-  operadorNoValido: "Ese nombre no está en la base de datos."
+  operadorNoValido: "Ese nombre no está en la base de datos.",
+  // Etiquetas de la ficha de operador (vista Operadores).
+  etiquetasFicha: {
+    atacante: "Atacante",
+    defensor: "Defensor",
+    rol: "Rol",
+    gadgets: "Gadgets",
+    velocidad: "Velocidad",
+    anio: "Año de salida",
+    sexo: "Sexo",
+    region: "Región"
+  }
 };
