@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.24.0 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
+# SIEGE DLE — v0.24.4 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -35,8 +35,10 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
   contenido hay tres botones: **JUGAR** (arranca el veto), **Ver mapas** (los 16 mapas con
   foto en grande y nombre, sin info) y **Cómo se juega**.
 - **Veto + sorteo de mapa**: salen **5 mapas al azar** con sus imágenes reales (`imagenes/mapas/`).
-  En el veto los 5 van **en línea recta** (uno debajo del otro), con la **foto en grande y solo
-  el nombre**, sin data. Adentro tenés la opción de **Regresar y no jugar** (volver al inicio sin penalización) y
+  En el veto los 5 van **uno al lado del otro** (estilo Siege original, con scroll lateral en
+  celular), con la **foto completa y solo el nombre en degradado transparente**, sin data.
+  En el sorteo también: solo foto en grande y nombre. Adentro tenés la opción de
+  **Regresar y no jugar** (volver al inicio sin penalización) y
   de **Randomizar mapas de nuevo 1 sola vez** si querés otra combinación de 5 mapas candidatos.
   Vos baneás 1 y el rival banea 1 distinto; entre los **3 restantes el mapa sale totalmente al azar**, con una
   ruleta que se ve girar en pantalla (`#btn-sortear`, `vistaSorteo()`).
@@ -83,6 +85,10 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
 - **Quiz de conocimiento Siege** en momentos importantes (país de Kapkan, Yokai de Echo,
   Evil Eye, Sala del Aviador, trick Bandit+Kaid…): acertar da +info y +5% en la próxima
   acción; fallar cuesta 12 s y alerta al rival. Dificultad facil→experto, máx. 2 por ronda.
+  Las situaciones no se repiten de forma seguida (exclusión de las últimas 3 + peso por usos)
+  y los textos tienen variantes; si el pool se vacía o se acaban los momentos, la ronda se
+  define con un duelo final a balas (con bajas reales, nunca moneda al aire) y el resumen
+  muestra el motivo de cierre (eliminación, tiempo, plant o duelo).
 - **Plant/retake, clutch 1vX** con interfaz especial, condiciones de victoria por
   eliminación/tiempo/plant, y **resumen de ronda** con bajas, daño, utilidad usada y
   malgastada, plant, clutch, mejor y peor decisión.
@@ -114,7 +120,7 @@ js/
   data/mapas.js             -> mapas, puntos y bonus (fácil agregar más)
   data/puntos-ataque.js     -> puntos de arranque de los atacantes por mapa
   data/tactica-preguntas.js -> desafíos de conocimiento Siege (fácil→experto)
-  data/tactica-situaciones.js -> momentos tácticos con acciones y consecuencias
+  data/tactica-situaciones.js -> 28 momentos tácticos con acciones y consecuencias
   logic/ronda-tactica.js    -> motor táctico: momentos, probs, HP, plant, clutch, quiz
   components/ronda-tactica-ui.js -> vista de la ronda (timeline, intel, QTE, resumen)
   css/tactica.css            -> estilos de la ronda táctica
