@@ -338,6 +338,9 @@
     const el = t.equipoIA.find((u) => u.hp > 0);
     const opYo = yo ? porId(yo.id) : null;
     const opEl = el ? porId(el.id) : null;
+    const dif = difDuelo(t);
+    const casual = !!(t.actual && t.actual.casual);
+    const tit = tituloDuelo(t);
     const vs = `<div class="tac-vs">
         <div class="tac-vs-lado"><span class="tac-vs-foto">${opYo ? retrato(opYo) : "?"}</span>
           <strong>${yo ? yo.nombre : "—"}</strong><small>${yo ? Math.max(0, Math.round(yo.hp)) : 0} HP</small></div>
@@ -347,21 +350,22 @@
       </div>`;
     if (dueloModo === "quiz" && dueloQuizQ) {
       const letras = ["A", "B", "C", "D"];
-      return `<div class="decision-box tac-duelo">
-        <h3>⚔ DUELO 1 VS 1 · DESAFÍO</h3>${vs}
+      return `<div class="decision-box tac-duelo${casual ? " tac-duelo-casual" : ""}">
+        <h3>${tit} · DESAFÍO${casual ? " DIFÍCIL" : ""}</h3>${vs}
         <p class="tac-texto"><strong>${dueloQuizQ.q}</strong></p>
         <div class="tac-acciones">${dueloQuizQ.op.map((op, i) =>
           `<button class="btn btn-ghost tac-acc" data-duelo-quiz="${i}" type="button"><strong>${letras[i]}</strong><small>${op}</small></button>`
         ).join("")}</div>
-        <p class="muted">Acertar elimina al rival. Fallar: −35 HP y el duelo sigue.</p>
+        <p class="muted">${casual ? "Acertar elimina al rival. Fallar es caer: duelo a muerte." : "Acertar elimina al rival. Fallar: −35 HP y el duelo sigue."}</p>
       </div>`;
     }
     if (dueloModo === "aim") {
-      const zona = 12 + Math.floor(Math.random() * 60);
-      const ancho = 15;
-      return `<div class="decision-box tac-duelo">
-        <h3>⚔ DUELO 1 VS 1 · REFLEJOS</h3>${vs}
-        <p class="tac-texto">Dispará cuando el marcador pase por la <strong>zona verde</strong>. Tenés 8 segundos.</p>
+      const zona = 12 + Math.floor(Math.random() * (88 - dif.ancho));
+      const ancho = dif.ancho;
+      const segs = dif.segs || 8;
+      return `<div class="decision-box tac-duelo${casual ? " tac-duelo-casual" : ""}">
+        <h3>${tit} · REFLEJOS</h3>${vs}
+        <p class="tac-texto">Dispará cuando el marcador pase por la <strong>zona verde</strong>. Tenés ${segs} segundos.${casual ? " Si fallás, caés." : ""}</p>
         <div class="tac-aim" id="tac-aim" data-zona="${zona}" data-ancho="${ancho}">
           <div class="tac-aim-zona" style="left:${zona}%;width:${ancho}%"></div>
           <div class="tac-aim-cursor" style="left:0%"></div>
@@ -370,29 +374,40 @@
         <div class="tac-qte" id="tac-duelo-tiempo"><span></span></div>
       </div>`;
     }
-    return `<div class="decision-box tac-duelo">
-      <h3>⚔ DUELO 1 VS 1</h3>${vs}
-      <p class="tac-texto">Quedan ustedes dos. Elegí cómo ganarlo:</p>
+    return `<div class="decision-box tac-duelo${casual ? " tac-duelo-casual" : ""}">
+      <h3>${tit}</h3>${vs}
+      <p class="tac-texto">${casual ? "Duelo a MUERTE en mitad de la ronda: el que pierde, cae. Elegí cómo ganarlo:" : "Quedan ustedes dos. Elegí cómo ganarlo:"}</p>
       <div class="tac-acciones">
-        <button class="btn btn-ghost tac-acc" data-duelo-modo="aim" type="button"><strong>🔫 DISPARAR</strong><small>Minijuego de reflejos: zona verde, 8 segundos. Fallar duele (55 HP).</small></button>
-        <button class="btn btn-ghost tac-acc" data-duelo-modo="quiz" type="button"><strong>⌖ DESAFÍO</strong><small>Pregunta Siege: acertar elimina, fallar duele (35 HP).</small></button>
+        <button class="btn btn-ghost tac-acc" data-duelo-modo="aim" type="button"><strong>🔫 DISPARAR</strong><small>Minijuego de reflejos: zona verde${casual ? " angosta y rápida" : ""}. ${casual ? "Fallar es caer." : "Fallar duele (55 HP)."}</small></button>
+        <button class="btn btn-ghost tac-acc" data-duelo-modo="quiz" type="button"><strong>⌖ DESAFÍO${casual ? " DIFÍCIL" : ""}</strong><small>Pregunta Siege${casual ? " (media a experta)" : ""}: acertar elimina${casual ? ", fallar es caer." : ", fallar duele (35 HP)."}</small></button>
       </div>
     </div>`;
   }
 
+  function difDuelo(t) {
+    return (t.actual && t.actual.dueloDif) || { ancho: 15, vel: 2.2, segs: 8, quizDif: null };
+  }
+
+  function tituloDuelo(t) {
+    return (t.actual && t.actual.casual) ? "⚔ DUELO A MUERTE" : "⚔ DUELO 1 VS 1";
+  }
+
   function arrancarDuelo() {
     detenerDuelo();
+    const t = Tch().estado();
+    const dif = difDuelo(t);
+    const vel = dif.vel || 2.2;
+    const total = Math.round((dif.segs || 8) * 25); // 40ms por tick: si no disparás, dispara él
     const aim = document.getElementById("tac-aim");
     if (!aim) return;
     const cursor = aim.querySelector(".tac-aim-cursor");
     const zona = Number(aim.dataset.zona), ancho = Number(aim.dataset.ancho);
     const bar = document.querySelector("#tac-duelo-tiempo span");
     let pos = 0, dir = 1, ticks = 0;
-    const total = 200; // 8 segundos a 40ms: si no disparás, dispara él
     dueloTimer = setInterval(() => {
       if (!document.getElementById("tac-aim")) { detenerDuelo(); return; }
       if (pausaTac) return;
-      pos += dir * 2.2;
+      pos += dir * vel;
       if (pos >= 100) { pos = 100; dir = -1; }
       if (pos <= 0) { pos = 0; dir = 1; }
       if (cursor) cursor.style.left = pos + "%";
@@ -502,7 +517,7 @@
     }));
     zona.querySelectorAll("[data-duelo-modo]").forEach((b) => b.addEventListener("click", () => {
       dueloModo = b.dataset.dueloModo;
-      dueloQuizQ = dueloModo === "quiz" ? Tch().dueloPregunta() : null;
+      dueloQuizQ = dueloModo === "quiz" ? Tch().dueloPregunta(difDuelo(Tch().estado()).quizDif) : null;
       pintar();
     }));
     zona.querySelectorAll("[data-duelo-quiz]").forEach((b) => b.addEventListener("click", () => {
