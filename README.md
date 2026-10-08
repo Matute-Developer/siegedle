@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.24.4 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
+# SIEGE DLE — v0.24.5 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
