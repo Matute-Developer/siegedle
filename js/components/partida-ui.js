@@ -9,10 +9,8 @@
   let seleccionMapa = null;  // id del mapa marcado en el veto
   let panelInicio = null;    // null: botones | "mapas": ver mapas | "reglas": cómo se juega
   let temporizadores = [];
-  let alimentando = false;
   let enPausa = false;
   let fasePausada = null;
-  let indiceFeed = 0;
   const TIEMPO_BAN = 30;
   const TIEMPO_DRAFT = 90; // un solo reloj para los 5 picks
 
@@ -25,8 +23,6 @@
   function limpiarTimers() {
     temporizadores.forEach((t) => { clearTimeout(t); clearInterval(t); });
     temporizadores = [];
-    alimentando = false;
-    indiceFeed = 0;
   }
 
   // ---------- Reloj global por fase ----------
@@ -121,17 +117,15 @@
     } else {
       fasePausada = null;
       arrancarReloj();
-      if (st.fase === "ronda" && st.ronda && !st.ronda.resultado) reanudarFeed();
-      else pintarReloj();
+      pintarReloj();
     }
     pintarBotonPausa();
     pintarReloj();
   }
 
-  function reanudarFeed() {
-    const zona = document.getElementById("zona-decision");
-    if (zona && zona.innerHTML.trim()) return; // hay una decisión esperando: no se adelanta nada
-    avanzar();
+  function conectar() {
+    const raiz = document.getElementById("partida-contenido");
+    conectarZona(raiz);
   }
 
   function entrar() {
@@ -156,7 +150,11 @@
     else if (st.fase === "bans") cont.innerHTML = vistaBans();
     else if (st.fase === "draft") cont.innerHTML = vistaDraft();
     else if (st.fase === "previa") cont.innerHTML = vistaPrevia();
-    else if (st.fase === "ronda") { cont.innerHTML = vistaRonda(); alimentar(); }
+    else if (st.fase === "ronda") {
+      // Ronda táctica: la lógica y la vista viven en ronda-tactica.js / ronda-tactica-ui.js.
+      cont.innerHTML = window.SIEGE_DLE.rondaTacticaUI.vista();
+      window.SIEGE_DLE.rondaTacticaUI.comenzar();
+    }
     else if (st.fase === "fin") cont.innerHTML = vistaFin();
     conectar();
     if (st.fase === "bans" && pasoBan === 0) asegurarReloj("bans", TIEMPO_BAN, "TIEMPO GLOBAL DE BANEO", banAleatorio);
@@ -199,32 +197,21 @@
     </div>`;
   }
 
-  function arranquesDe(id) {
-    const lista = window.SIEGE_DLE.puntosAtaque || [];
-    const fila = lista.find((e) => e.mapa === id);
-    return fila ? fila.puntos : [];
-  }
-
+  // Sección "Ver mapas": foto en grande y nombre nomás, sin info (no es parte de la partida).
   function vistaListaMapas() {
     const mapas = window.SIEGE_DLE.mapas || [];
     const filas = mapas.map((m) => {
-      const thumb = m.imagen
-        ? `<div class="mapa-ficha__thumb"><img src="${m.imagen}" alt="${m.nombre}" loading="lazy" /></div>`
+      const foto = m.imagen
+        ? `<div class="mapa-ficha__foto"><img src="${m.imagen}" alt="${m.nombre}" loading="lazy" /></div>`
         : "";
-      return `<div class="mapa-ficha">
-        ${thumb}
-        <div class="mapa-ficha__content">
-          <div class="mapa-ficha__head"><strong>🗺️ ${m.nombre}</strong><span class="pill">${m.sitios.length} puntos</span></div>
-          <p class="mapa-desc">${m.descripcion}</p>
-          <p class="mapa-dato"><span class="mapa-dato__label">Puntos de bomba</span>${m.sitios.map((s) => `<span class="pill">💣 ${s}</span>`).join("")}</p>
-          <p class="mapa-dato"><span class="mapa-dato__label">Arranques</span>${arranquesDe(m.id).map((s) => `<span class="pill pill-acc">🚀 ${s}</span>`).join("")}</p>
-        </div>
+      return `<div class="mapa-ficha mapa-ficha--solo">
+        ${foto}
+        <div class="mapa-ficha__nombre"><strong>🗺️ ${m.nombre}</strong></div>
       </div>`;
     }).join("");
     return `<div class="briefing">
-      <div class="briefing__head"><span class="tag">LOS ${mapas.length} MAPAS</span>
-        <span class="briefing__date">PUNTOS DE BOMBA + ARRANQUES</span></div>
-      <h2>Mapas y puntos</h2>
+      <div class="briefing__head"><span class="tag">LOS ${mapas.length} MAPAS</span></div>
+      <h2>Mapas</h2>
       <div class="mapas-lista">${filas}</div>
       <button class="btn btn-ghost btn-block" data-acc="a-volver-inicio" type="button">← Volver</button>
     </div>`;
@@ -241,7 +228,10 @@
         <li><strong>Punto y arranque:</strong> si <strong>defendés</strong> elegís el punto de bomba (💣); si <strong>atacás</strong> elegís el punto de arranque (🚀) y el punto lo pone el rival. El punto donde ganaste queda <strong>bloqueado</strong> para el resto de la partida.</li>
         <li><strong>Bans:</strong> cada ronda baneás 1 rival y el rival banea 1 tuyo. Los baneos se <strong>acumulan</strong> en toda la partida.</li>
         <li><strong>Draft:</strong> armás tu equipo de <strong>5</strong> con el bando que te toca en la ronda.</li>
-        <li><strong>Ronda:</strong> tomás <strong>2 decisiones</strong> con 3 opciones cada una. Sin pistas: el que se equivoca, se equivoca.</li>
+        <li><strong>Ronda táctica:</strong> jugás la ronda <strong>momento a momento</strong> con reloj (2:45),
+        HP y utilidad por operador, intel oculta del rival, plant/retake, clutch y desafíos de
+        conocimiento Siege. Cada acción tiene <strong>riesgo visible y condiciones</strong>: sin C4 no hay
+        C4. Nada está garantizado.</li>
         <li><strong>Gana quien llegue a 4</strong> rondas. Quien arranca <strong>alterna</strong> entre partidas.</li>
       </ol>
       <button class="btn btn-ghost btn-block" data-acc="a-volver-inicio" type="button">← Volver</button>
@@ -249,16 +239,14 @@
   }
 
   // ---------- VETO DE MAPA Y SORTEO ----------
-  function tarjetaMapa(mapa, marcado, sello) {
+  function tarjetaMapa(mapa, marcado) {
     const imgHtml = mapa.imagen
-      ? `<div class="mapa-card__thumb"><img src="${mapa.imagen}" alt="${mapa.nombre}" loading="lazy" /></div>`
+      ? `<div class="mapa-card__thumb mapa-card__thumb--grande"><img src="${mapa.imagen}" alt="${mapa.nombre}" loading="lazy" /></div>`
       : "";
-    return `<button class="mapa-card${marcado ? " seleccionado" : ""}" data-mapa="${mapa.id}" type="button">
+    return `<button class="mapa-card mapa-card--veto${marcado ? " seleccionado" : ""}" data-mapa="${mapa.id}" type="button" aria-pressed="${marcado ? "true" : "false"}">
       ${imgHtml}
-      <div class="mapa-card__info">
+      <div class="mapa-card__info mapa-card__info--nombre">
         <strong>🗺️ ${mapa.nombre}</strong>
-        <span class="mapa-desc">${mapa.descripcion}</span>
-        <span class="sitio-sello">${sello}</span>
       </div>
     </button>`;
   }
@@ -267,15 +255,14 @@
   function vistaVetoMapa() {
     const st = ST();
     const candidatos = (st.mapasCandidatos || []).map((id) => P().mapaPorId(id)).filter(Boolean);
-    const tarjetas = candidatos.map((m) => tarjetaMapa(m, seleccionMapa === m.id,
-      seleccionMapa === m.id ? "MARCASTE ESTE MAPA" : "BANEAR ESTE MAPA")).join("");
+    const tarjetas = candidatos.map((m) => tarjetaMapa(m, seleccionMapa === m.id)).join("");
     return `<div class="briefing">
       <div class="briefing__head"><span class="tag">FASE PREVIA · VETO DE MAPAS</span>
         <span class="briefing__date">5 CANDIDATOS · BANEA 1 CADA UNO</span></div>
       <h2>Baneá un mapa</h2>
       <p class="muted">Salen <strong>${candidatos.length} mapas</strong>. Vos baneás uno y el rival banea otro:
         entre los <strong>3 restantes</strong> el mapa se <strong>sortea</strong>.</p>
-      <div class="mapa-grid">${tarjetas}</div>
+      <div class="mapa-grid mapa-grid--veto">${tarjetas}</div>
       <div class="veto-acciones">
         <button class="btn btn-primary btn-block" id="btn-veto-mapa" data-acc="a-confirmar-veto" type="button" ${seleccionMapa ? "" : "disabled"}>Confirmar veto</button>
         <div class="veto-acciones__secundarias">
@@ -531,152 +518,9 @@
       </div>`;
   }
 
-  // ---------- RONDA ----------
-  function vistaRonda() {
-    const st = ST();
-    const prob0 = P().probActual();
-    const pr = { prob: prob0, fJ: st.ronda ? st.ronda.fuerzaJ : 0, fI: st.ronda ? st.ronda.fuerzaIA : 0, ventaja: Math.round((prob0 - 0.5) * 100), partido: P().probPartido(st.puntosJ, st.puntosIA, prob0) };
-    return `${cabecera()}
-      <div class="briefing"><div class="briefing__head"><span class="tag">RONDA ${st.rondaNum} · ${st.ronda.lado.toUpperCase()}</span></div>
-        <div class="ronda-versus">
-          <div class="strip">${st.equipoJ.map(miniFicha).join("")}</div>
-          <div class="vs">VS</div>
-          <div class="strip">${st.equipoIA.map(miniFicha).join("")}</div>
-        </div>
-        <div id="zona-live">${panelProb(pr, true)}</div>
-        <div class="controles">
-          <button class="btn btn-ghost btn-mini" id="btn-pausa" type="button">⏸ Pausar</button>
-          <button class="btn btn-ghost btn-mini" id="btn-saltar" type="button">⏩ Saltar</button>
-        </div>
-        <div class="feed" id="feed"></div>
-        <div id="zona-decision"></div>
-        <div id="zona-resultado"></div>
-      </div>`;
-  }
-
-  function miniFicha(id) {
-    const op = porId(id);
-    return `<span class="strip-mini" title="${op.nombre}">${retrato(op)}</span>`;
-  }
-
-  function refrescarLive() {
-    const st = ST();
-    const zona = document.getElementById("zona-live");
-    if (!zona || !st.ronda) return;
-    const prob = P().probActual();
-    const pr = {
-      prob, fJ: st.ronda.fuerzaJ, fI: st.ronda.fuerzaIA,
-      ventaja: Math.round((prob - 0.5) * 100),
-      partido: P().probPartido(st.puntosJ, st.puntosIA, prob)
-    };
-    zona.innerHTML = panelProb(pr, true);
-  }
-
-  const ICONOS_FEED = { mapa: "🗺️", prep: "◈", intel: "⌖", rival: "⚠", clash: "✖", duelo: "⚔", exec: "▶" };
-
-  function agregarLinea(texto, tipo) {
-    const feed = document.getElementById("feed");
-    if (!feed) return;
-    const p = document.createElement("p");
-    p.className = "feed-linea" + (tipo ? " ev-" + tipo : "");
-    const icono = document.createElement("span");
-    icono.className = "feed-ico";
-    icono.textContent = ICONOS_FEED[tipo] || "▸";
-    const cuerpo = document.createElement("span");
-    cuerpo.textContent = texto;
-    p.appendChild(icono);
-    p.appendChild(cuerpo);
-    feed.appendChild(p);
-    feed.scrollTop = feed.scrollHeight;
-  }
-
-  function avanzar() {
-    const st = ST();
-    if (enPausa) return;
-    if (!document.getElementById("feed") || !st.ronda || st.ronda.resultado) return;
-    if (indiceFeed >= st.ronda.eventos.length) { finalizarFeed(); return; }
-    const ev = st.ronda.eventos[indiceFeed++];
-    if (ev.decision !== undefined) { mostrarDecision(ev.decision); return; }
-    agregarLinea(ev.texto, ev.tipo);
-    programar();
-  }
-
-  function programar() {
-    if (enPausa) return;
-    temporizadores.push(setTimeout(avanzar, 850));
-  }
-
-  function alimentar() {
-    if (alimentando) return;
-    alimentando = true;
-    avanzar();
-  }
-
-  function saltar() {
-    const st = ST();
-    if (!st.ronda || st.ronda.resultado) return;
-    enPausa = false;
-    fasePausada = null;
-    temporizadores.forEach((t) => { clearTimeout(t); clearInterval(t); });
-    temporizadores = [];
-    pintarBotonPausa();
-    document.getElementById("zona-decision").innerHTML = "";
-    while (indiceFeed < st.ronda.eventos.length) {
-      const ev = st.ronda.eventos[indiceFeed++];
-      if (ev.decision !== undefined) {
-        const todas = [...P().DECISIONES[st.ronda.lado]].filter((d) => !st.ronda.usadas.includes(d.clave));
-        if (todas.length) {
-          const d = todas[Math.floor(Math.random() * todas.length)];
-          agregarLinea(P().aplicarDecision(d.clave) + " (auto)", "prep");
-        }
-        continue;
-      }
-      agregarLinea(ev.texto, ev.tipo);
-    }
-    finalizarFeed();
-  }
-
-  function mostrarDecision(cual) {
-    const st = ST();
-    const todas = [...P().DECISIONES[st.ronda.lado]]
-      .filter((d) => !st.ronda.usadas.includes(d.clave));
-    for (let i = todas.length - 1; i > 0; i--) {
-      const k = Math.floor(Math.random() * (i + 1));
-      [todas[i], todas[k]] = [todas[k], todas[i]];
-    }
-    const opciones = todas.slice(0, 3);
-    const zona = document.getElementById("zona-decision");
-    zona.innerHTML = `<div class="decision-box"><h3>¿Qué querés hacer?</h3>
-      ${opciones.map((d) => `<button class="btn btn-ghost decision-btn" data-dec="${d.clave}" type="button"><strong>${d.clave} — ${d.titulo}</strong><small>${d.desc}</small></button>`).join("")}
-    </div>`;
-    zona.querySelectorAll("[data-dec]").forEach((b) => b.addEventListener("click", () => {
-      const linea = P().aplicarDecision(b.dataset.dec);
-      zona.innerHTML = "";
-      agregarLinea(linea, "prep");
-      refrescarLive();
-      avanzar();
-    }));
-  }
-
-  function finalizarFeed() {
-    const st = ST();
-    if (!st.ronda || st.ronda.resultado) return;
-    const res = P().resolverRonda();
-    refrescarLive();
-    const zona = document.getElementById("zona-resultado");
-    const matchTxt = Math.round(P().probPartido(st.puntosJ, st.puntosIA, st.ronda.prob) * 100);
-    zona.innerHTML = `<div class="veredicto ${res.ganada ? "ok" : "bad"}">
-        <strong>${res.ganada ? "✓ RONDA GANADA" : "✕ RONDA PERDIDA"}</strong>
-        <span>${st.puntosJ} — ${st.puntosIA} · Partida: ${matchTxt}%</span>
-      </div>
-      ${res.fin
-        ? `<button class="btn btn-primary btn-block" data-acc="a-ver-fin" type="button">Ver resultado final</button>`
-        : `<button class="btn btn-primary btn-block" data-acc="a-sitio" type="button">Ronda ${st.rondaNum + 1}: punto y arranque</button>`}`;
-    conectarZona(zona);
-    if (res.puntoBloqueado) {
-      window.SIEGE_DLE.toast.mostrar(`Punto "${res.sitio}" ganado: queda bloqueado y no se vuelve a jugar en esta partida.`, "success");
-    }
-  }
+  // ---------- RONDA TÁCTICA ----------
+  // La vista de la ronda vive en js/components/ronda-tactica-ui.js
+  // (línea temporal, intel, equipos, killfeed, decisiones, quiz, QTE y resumen).
 
   // ---------- FIN ----------
   function vistaFin() {
@@ -767,15 +611,6 @@
     st.fase = "previa";
     window.SIEGE_DLE.toast.mostrar(`Se acabó el tiempo: faltaban ${faltan} picks y se completaron solos.`, "warning");
     render();
-  }
-
-  function conectar() {
-    const raiz = document.getElementById("partida-contenido");
-    conectarZona(raiz);
-    const pausa = document.getElementById("btn-pausa");
-    if (pausa) pausa.addEventListener("click", alternarPausa);
-    const salto = document.getElementById("btn-saltar");
-    if (salto) salto.addEventListener("click", saltar);
   }
 
   // SORTEO: el mapa sale totalmente al azar entre los que quedaron en pie, con una ruleta
@@ -897,5 +732,5 @@
   }
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
-  window.SIEGE_DLE.partidaUI = { entrar, render };
+  window.SIEGE_DLE.partidaUI = { entrar, render, accion };
 })();
