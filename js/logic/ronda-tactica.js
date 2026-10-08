@@ -305,6 +305,7 @@
   function resolverDuelo(gano, via) {
     const t = T();
     if (!t.actual || !t.actual.duelo || t.terminado) return null;
+    t.nuevasMuertes = [];
     const yo = t.equipoJ.find((u) => u.hp > 0);
     const el = t.equipoIA.find((u) => u.hp > 0);
     const esQuiz = via === "quiz";
@@ -473,8 +474,12 @@
   function pushMuerte(u, esRival) {
     const t = T();
     // Se guarda la identidad real: la UI muestra SU retrato, no un nombre suelto.
-    t.feed.unshift({ id: u.id, nombre: u.nombre, rival: !!esRival });
+    const entrada = { id: u.id, nombre: u.nombre, rival: !!esRival };
+    t.feed.unshift(entrada);
     if (t.feed.length > 6) t.feed.pop();
+    // Cola para el cartel de muerte en el medio de la pantalla.
+    t.nuevasMuertes = t.nuevasMuertes || [];
+    t.nuevasMuertes.push(entrada);
   }
 
   // Reparto previo: se eligen ANTES las víctimas reales para que el texto nombre
@@ -543,6 +548,7 @@
     if (!t.actual || t.terminado) return null;
     const acc = t.actual.accs.find((a) => a.id === idAcc);
     if (!acc) return null;
+    t.nuevasMuertes = [];
     const c = ctx();
     // Condiciones: operador / recurso / tiempo.
     if (acc.reqOp && !acc.reqOp.some((id) => c.tiene(id))) return { error: "Ese operador no está disponible." };
