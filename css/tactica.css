@@ -20,6 +20,19 @@
 .tac-linea.ev-mapa { border-left-color: var(--accent); }
 .tac-linea.ev-momento { border-left-color: var(--amber); }
 .tac-linea.ev-exec { border-left-color: var(--amber); font-weight: 700; letter-spacing: .06em; }
+.tac-linea.ev-duelo { border-left-color: var(--red); font-weight: 700; letter-spacing: .06em; }
+
+/* Duelo 1v1: las fotos de los que se enfrentan + minijuego de reflejos. */
+.tac-duelo { border-color: var(--red); }
+.tac-vs { display: flex; align-items: center; justify-content: center; gap: 1.2rem; margin: .8rem 0; }
+.tac-vs-lado { display: flex; flex-direction: column; align-items: center; gap: .25rem; }
+.tac-vs-foto .retrato { width: 72px; height: 72px; border-width: 3px; }
+.tac-vs-lado strong { font-size: .95rem; }
+.tac-vs-lado small { color: var(--muted); font-size: .75rem; }
+.tac-vs-mid { font-family: var(--font-d); font-size: 1.6rem; color: var(--red); }
+.tac-aim { position: relative; height: 26px; border-radius: 999px; background: var(--line-soft); overflow: hidden; margin: .6rem 0; border: 1px solid var(--line); }
+.tac-aim-zona { position: absolute; top: 0; bottom: 0; background: rgba(53,208,127,.45); border-left: 1px solid var(--green); border-right: 1px solid var(--green); }
+.tac-aim-cursor { position: absolute; top: -2px; bottom: -2px; width: 4px; background: #fff; box-shadow: 0 0 8px #fff; }
 
 .tac-panel { background: var(--bg2); border: 1px solid var(--line-soft); border-radius: 12px; padding: .7rem .9rem; }
 .tac-panel h4 { font-family: var(--font-d); letter-spacing: .14em; font-size: .8rem; color: var(--muted); margin: 0 0 .5rem; }
@@ -42,9 +55,19 @@
 .tac-recs { display: flex; gap: .3rem; flex-wrap: wrap; }
 .tac-rec { font-size: .66rem; font-weight: 700; letter-spacing: .06em; color: var(--accent); border: 1px solid rgba(61,215,255,.4); background: rgba(61,215,255,.08); border-radius: 999px; padding: .1rem .5rem; }
 
-.tac-kill { margin: 0 0 .3rem; font-size: .82rem; display: flex; gap: .5rem; align-items: center; border-left: 3px solid var(--green); padding-left: .5rem; }
-.tac-kill span { font-size: .66rem; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+.tac-kill { margin: 0 0 .35rem; font-size: .82rem; display: flex; gap: .5rem; align-items: center; border-left: 3px solid var(--green); padding-left: .5rem; }
+.tac-kill-lado { font-size: .64rem; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
 .tac-kill.rival { border-left-color: var(--red); }
+.tac-kill strong { font-size: .85rem; }
+
+/* Muerto: retrato en blanco y negro con cruz encima (killfeed y equipos). */
+.tac-muerto { position: relative; display: inline-block; flex-shrink: 0; }
+.tac-muerto .retrato { width: 40px; height: 40px; }
+.tac-muerto .retrato img { filter: grayscale(1) brightness(.7); }
+.tac-muerto::after { content: "✕"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--red); font-size: 1.5rem; font-weight: 900; text-shadow: 0 0 6px #000, 0 0 2px #000; pointer-events: none; }
+.tac-u-ico { position: relative; display: inline-block; }
+.tac-u-ico.tac-muerto .retrato { width: 34px; height: 34px; }
+.tac-u-ico.tac-muerto::after { font-size: 1.3rem; }
 
 .tac-momento-head { display: flex; gap: .6rem; align-items: baseline; margin-bottom: .4rem; }
 .tac-momento-head .tac-t { font-family: var(--font-d); font-size: 1.2rem; color: var(--amber); }
