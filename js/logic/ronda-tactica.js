@@ -116,6 +116,7 @@
       alerta: 0, plantado: false,
       plan: planRival(),
       actual: null, quiz: null, quizzes: 0, bonoQuiz: 0, duelo1v1: false,
+      dueloCasualSalio: false, dueloPar: null,
       usos: {}, vistos: [], cadena: null,
       feed: [], muertes: [],
       timeline: [{ t: formatoReloj(TIEMPO_INICIAL), texto: `Fase de preparación en ${st.mapa.nombre} — ${st.sitio}.`, tipo: "mapa" }],
@@ -192,6 +193,12 @@
     if (vivos(t.equipoJ) === 1 && vivos(t.equipoIA) === 1 && !t.duelo1v1) {
       return momentoDuelo();
     }
+    // Duelo casual: puede caer en cualquier momento (inicio, mitad o cierre), sin
+    // estar garantizado. Máximo uno por ronda para que se sienta especial.
+    if (!t.plantado && !t.dueloCasualSalio && (vivos(t.equipoJ) + vivos(t.equipoIA)) >= 4 && Math.random() < 0.16) {
+      const d = momentoDueloCasual();
+      if (d) return d;
+    }
     // Sin plant y con 15s o menos (o tope de momentos): ASALTO FINAL obligatorio.
     // Matar o plantar, a pura probabilidad. No hay victoria pasiva.
     if (!t.plantado && (t.tiempo <= 15 || t.n >= MAX_MOMENTOS)) {
@@ -239,10 +246,14 @@
     const av = [4, 7];
     t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])));
     t.n += 1;
+    const yo = unidadViva(t.equipoJ);
+    const el = unidadViva(t.equipoIA);
+    t.dueloPar = { yo: yo ? yo.id : null, el: el ? el.id : null };
     t.actual = {
       duelo: true,
       sit: { id: "duelo-1v1", titulo: () => "DUELO 1 VS 1", texto: () => "Solo quedan ustedes dos en el mapa." },
-      accs: [], defectoId: null, tituloTxt: "DUELO 1 VS 1", textoTxt: "Solo quedan ustedes dos en el mapa."
+      accs: [], defectoId: null, tituloTxt: "DUELO 1 VS 1", textoTxt: "Solo quedan ustedes dos en el mapa.",
+      dueloDif: { ancho: 15, vel: 2.2, segs: 8, quizDif: null }
     };
     pushTimeline("¡DUELO 1 VS 1!", "duelo");
     t.quiz = null;
@@ -302,34 +313,70 @@
     return t.actual;
   }
 
+  // Duelo casual: un 1v1 que PUEDE aparecer en cualquier momento de la ronda
+  // (inicio, mitad o cierre), sin estar garantizado. Duelo a MUERTE y difícil:
+  // quiz solo medio/difícil/experto, minijuego más rápido y angosto. El que pierde, cae.
+  function momentoDueloCasual() {
+    const t = T();
+    const yo = unidadViva(t.equipoJ);
+    const el = unidadViva(t.equipoIA);
+    if (!yo || !el) return null;
+    t.dueloCasualSalio = true;
+    const av = [6, 12];
+    t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])));
+    t.n += 1;
+    t.dueloPar = { yo: yo.id, el: el.id };
+    t.actual = {
+      duelo: true, casual: true,
+      sit: { id: "duelo-casual" },
+      accs: [], defectoId: null,
+      tituloTxt: `DUELO: ${yo.nombre.toUpperCase()} VS ${el.nombre.toUpperCase()}`,
+      textoTxt: `¡Se cruzan ${yo.nombre} y ${el.nombre}, solos y sin ayuda! Duelo a muerte: el que pierde, cae.`,
+      dueloDif: { ancho: 10, vel: 3.4, segs: 6, quizDif: ["medio", "dificil", "experto"] }
+    };
+    pushTimeline(`¡DUELO! ¡${yo.nombre} VS ${el.nombre}!`, "duelo");
+    t.quiz = null;
+    return t.actual;
+  }
+
   function resolverDuelo(gano, via) {
     const t = T();
     if (!t.actual || !t.actual.duelo || t.terminado) return null;
     t.nuevasMuertes = [];
-    const yo = t.equipoJ.find((u) => u.hp > 0);
-    const el = t.equipoIA.find((u) => u.hp > 0);
+    const par = t.dueloPar || {};
+    const yo = t.equipoJ.find((u) => u.id === par.yo && u.hp > 0) || t.equipoJ.find((u) => u.hp > 0);
+    const el = t.equipoIA.find((u) => u.id === par.el && u.hp > 0) || t.equipoIA.find((u) => u.hp > 0);
     const esQuiz = via === "quiz";
+    const casual = !!(t.actual && t.actual.casual);
+    const etiqueta = casual ? "DUELO CASUAL" : (esQuiz ? "DUELO 1V1 (DESAFÍO)" : "DUELO 1V1");
     let texto, tier;
     if (gano && el) {
       matar(el, true);
-      t.duelo1v1 = true;
+      if (!casual) t.duelo1v1 = true;
       texto = esQuiz
         ? `Leés la jugada como un libro: ${el.nombre} cae en tu trampa. El conocimiento también mata.`
         : `¡DUELO GANADO! ${el.nombre} cae delante tuyo. Quedás en pie con ${Math.max(0, Math.round(yo ? yo.hp : 0))} de HP.`;
       tier = "ok";
-      t.stats.decisiones.push({ etiqueta: esQuiz ? "DUELO 1V1 (DESAFÍO)" : "DUELO 1V1", buena: true });
+      t.stats.decisiones.push({ etiqueta, buena: true });
     } else if (yo) {
-      const dmg = esQuiz ? 35 : 55;
-      golpear(yo, dmg, false);
-      const muerto = yo.hp <= 0;
-      if (muerto) t.duelo1v1 = true;
-      texto = muerto
-        ? `${el ? el.nombre : "El rival"} te gana el duelo: caés eliminado.`
-        : esQuiz
-          ? `Fallás el desafío y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue.`
-          : `Fallás y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue: tenés que ganarlo.`;
-      tier = muerto ? "contra" : "fallo";
-      t.stats.decisiones.push({ etiqueta: esQuiz ? "DUELO 1V1 (DESAFÍO)" : "DUELO 1V1", buena: false });
+      if (casual) {
+        // Duelo casual a muerte: perder es caer, sin segundas chances.
+        matar(yo, false);
+        texto = `${el ? el.nombre : "El rival"} te gana el duelo: ${yo.nombre} cae eliminado. Era a muerte.`;
+        tier = "contra";
+      } else {
+        const dmg = esQuiz ? 35 : 55;
+        golpear(yo, dmg, false);
+        const muerto = yo.hp <= 0;
+        if (muerto) t.duelo1v1 = true;
+        texto = muerto
+          ? `${el ? el.nombre : "El rival"} te gana el duelo: caés eliminado.`
+          : esQuiz
+            ? `Fallás el desafío y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue.`
+            : `Fallás y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue: tenés que ganarlo.`;
+        tier = muerto ? "contra" : "fallo";
+      }
+      t.stats.decisiones.push({ etiqueta, buena: false });
     } else {
       return null;
     }
@@ -340,10 +387,11 @@
   }
 
   // Duelo por conocimiento: una pregunta Siege para ganar el 1v1 sin disparar.
-  function dueloPregunta() {
+  // En el duelo casual solo salen medio/difícil/experto: tiene que costar.
+  function dueloPregunta(difs) {
     const t = T();
-    const difs = ["facil", "medio", "dificil"];
-    const q = elegirPregunta(difs[Math.floor(Math.random() * difs.length)]);
+    const lista = (difs && difs.length ? difs : ["facil", "medio", "dificil"]);
+    const q = elegirPregunta(lista[Math.floor(Math.random() * lista.length)]);
     if (!q) return null;
     t.dueloQuizQ = q;
     return q;
