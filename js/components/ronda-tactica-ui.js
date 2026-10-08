@@ -219,8 +219,8 @@
     }).join("");
     const qteMax = Math.max(0, ...t.actual.accs.map((a) => a.qte || 0));
     return `<div class="decision-box tac-momento">
-      <div class="tac-momento-head"><span class="tac-t">${cTiempo}</span><h3>${sit.titulo(c)}</h3></div>
-      <p class="tac-texto">${sit.texto(c)}</p>
+      <div class="tac-momento-head"><span class="tac-t">${cTiempo}</span><h3>${t.actual.tituloTxt}</h3></div>
+      <p class="tac-texto">${t.actual.textoTxt}</p>
       ${qteMax ? `<div class="tac-qte" id="tac-qte"><span></span></div>` : ""}
       <div class="tac-acciones">${btns}</div>
     </div>`;
@@ -276,12 +276,28 @@
     </div>`;
   }
 
+  const MOTIVO_TXT = {
+    eliminacion: "Definida por eliminación total.",
+    duelo: "Duelo final en el sitio.",
+    plant: "El defuser activo definió la ronda."
+  };
+
+  function motivoTexto(t) {
+    if (t.motivo === "tiempo") {
+      return t.lado === "ataque"
+        ? "Se agotó el reloj sin plantar: la defensa se lleva la ronda."
+        : "Se agotó el reloj sin plant: tu defensa se lleva la ronda.";
+    }
+    return MOTIVO_TXT[t.motivo] || "";
+  }
+
   function htmlResumen(t) {
     const s = t.stats;
     const r = resumen;
     const st = ST();
     return `<div class="decision-box tac-resumen ${r.ganada ? "ok" : "bad"}">
       <h3>${r.ganada ? "✓ RONDA GANADA" : "✕ RONDA PERDIDA"}</h3>
+      <p class="tac-motivo">${motivoTexto(t)}</p>
       <p class="stat-grande">${st.puntosJ} — ${st.puntosIA}</p>
       <div class="tac-stats">
         <div><span>BAJAS</span><strong>${s.bajasJ} – ${s.bajasR}</strong></div>

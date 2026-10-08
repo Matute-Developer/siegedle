@@ -239,15 +239,11 @@
   }
 
   // ---------- VETO DE MAPA Y SORTEO ----------
+  // Foto completa + nombre en degradado transparente: no se tapa nada.
   function tarjetaMapa(mapa, marcado) {
-    const imgHtml = mapa.imagen
-      ? `<div class="mapa-card__thumb mapa-card__thumb--grande"><img src="${mapa.imagen}" alt="${mapa.nombre}" loading="lazy" /></div>`
-      : "";
-    return `<button class="mapa-card mapa-card--veto${marcado ? " seleccionado" : ""}" data-mapa="${mapa.id}" type="button" aria-pressed="${marcado ? "true" : "false"}">
-      ${imgHtml}
-      <div class="mapa-card__info mapa-card__info--nombre">
-        <strong>🗺️ ${mapa.nombre}</strong>
-      </div>
+    return `<button class="mapa-card mapa-card--foto${marcado ? " seleccionado" : ""}" data-mapa="${mapa.id}" type="button" aria-pressed="${marcado ? "true" : "false"}">
+      ${mapa.imagen ? `<div class="mapa-card__foto"><img src="${mapa.imagen}" alt="${mapa.nombre}" loading="lazy" /></div>` : ""}
+      <div class="mapa-card__nombre"><strong>🗺️ ${mapa.nombre}</strong></div>
     </button>`;
   }
 
@@ -275,18 +271,11 @@
     </div>`;
   }
 
-  // Paso 2: los dos vetos dejaron 3 mapas; de ahí sale uno al azar.
+  // Paso 2: los dos vetos dejaron 3 mapas; de ahí sale uno al azar (solo foto y nombre).
   function tarjetaSorteo(mapa) {
-    const imgHtml = mapa.imagen
-      ? `<div class="mapa-card__thumb"><img src="${mapa.imagen}" alt="${mapa.nombre}" loading="lazy" /></div>`
-      : "";
-    return `<div class="mapa-card mapa-card--sorteo" data-sorteo="${mapa.id}">
-      ${imgHtml}
-      <div class="mapa-card__info">
-        <strong>🗺️ ${mapa.nombre}</strong>
-        <span class="mapa-desc">${mapa.descripcion}</span>
-        <span class="sitio-sello">EN CARTELERA</span>
-      </div>
+    return `<div class="mapa-card mapa-card--foto mapa-card--sorteo" data-sorteo="${mapa.id}">
+      ${mapa.imagen ? `<div class="mapa-card__foto"><img src="${mapa.imagen}" alt="${mapa.nombre}" loading="lazy" /></div>` : ""}
+      <div class="mapa-card__nombre"><strong>🗺️ ${mapa.nombre}</strong></div>
     </div>`;
   }
 
