@@ -192,11 +192,17 @@
     if (vivos(t.equipoJ) === 1 && vivos(t.equipoIA) === 1 && !t.duelo1v1) {
       return momentoDuelo();
     }
+    // Sin plant y con 15s o menos (o tope de momentos): ASALTO FINAL obligatorio.
+    // Matar o plantar, a pura probabilidad. No hay victoria pasiva.
+    if (!t.plantado && (t.tiempo <= 15 || t.n >= MAX_MOMENTOS)) {
+      return momentoAsalto();
+    }
     const sit = elegirSituacion();
     if (!sit) { dueloFinal(); return null; }
     const c = ctx();
     const av = sit.avance || [8, 14];
-    t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])));
+    // El reloj corre rápido: ~6 momentos tácticos y se llega al asalto final.
+    t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])) * 2);
     t.n += 1;
     t.usos[sit.id] = (t.usos[sit.id] || 0) + 1;
     if (!t.vistos.includes(sit.id)) t.vistos.push(sit.id);
@@ -220,7 +226,7 @@
     if (sit.quiz && t.quizzes < MAX_QUIZ && Math.random() < sit.quiz) {
       t.quiz = elegirPregunta(sit.quizDif);
     }
-    if (t.tiempo <= 0 && !t.plantado) { terminar(); return null; }
+    // Sin plant no hay victoria pasiva: si el reloj llegó a 0, decide el asalto final.
     return t.actual;
   }
 
@@ -240,38 +246,123 @@
     };
     pushTimeline("¡DUELO 1 VS 1!", "duelo");
     t.quiz = null;
-    if (t.tiempo <= 0 && !t.plantado) { terminar(); return null; }
     return t.actual;
   }
 
-  function resolverDuelo(gano) {
+  // ASALTO FINAL obligatorio (15s o menos sin plant, o tope de momentos): solo hay
+  // 2 caminos, MATAR o PLANTAR, y todo se resuelve a pura probabilidad. Cada resultado
+  // quita HP o planta, así que siempre termina: nunca hay victoria pasiva.
+  const ACC_MATAR = {
+    id: "asalto-matar", etiqueta: "⚔ MATAR O MORIR", sub: "Entrar a matar. Sin red.", riesgo: "alto",
+    base: 0.5, tags: ["duelo", "asalto"], estilo: "agresivo", verProb: true,
+    mods: [["Sabés dónde están", 10, (c) => c.intel >= 2],
+      ["Te esperan armados", -8, (c) => c.alerta >= 2],
+      ["Solo queda uno del otro lado", 10, (c) => c.vivosR === 1]],
+    resulta: {
+      crit: { texto: "Entrás como una exhalación: {rival} cae sin verla venir.", fx: { killR: 1 } },
+      ok: { texto: "A matar o morir: {rival} eliminado.", fx: { killR: 1 } },
+      parcial: { texto: "Intercambio brutal: {rival} queda herido y vos también.", fx: { dmgR: 55, dmgJ: 35 } },
+      fallo: { texto: "Te frenan en seco, pero dejás tocado a {rival}.", fx: { dmgJ: 55, dmgR: 20 } },
+      contra: { texto: "Salís a matar y te estaban esperando: caés eliminado.", fx: { killJ: 1 } } }
+  };
+
+  const ACC_PLANTAR = {
+    id: "asalto-plantar", etiqueta: "💣 PLANTAR EL DEFUSER", sub: "Si planta, el retake es de ellos.", riesgo: "alto",
+    base: 0.55, tags: ["plant", "asalto"], estilo: "agresivo", verProb: true,
+    mods: [["Sabés dónde están", 8, (c) => c.intel >= 2],
+      ["Smoke lo niega todo", -10, (c) => c.rival("smoke")],
+      ["Sin reloj: todo o nada", 5, (c) => c.tiempo <= 0]],
+    resulta: {
+      crit: { texto: "Plant perfecto y rápido: el defuser pita y el sitio es tuyo.", fx: { planta: true } },
+      ok: { texto: "El defuser queda plantado. Ahora a defenderlo con la vida.", fx: { planta: true } },
+      parcial: { texto: "Plantás herido: el retake va a doler.", fx: { planta: true, dmgJ: 45 } },
+      fallo: { texto: "Te cortan el plant a último momento. A seguir peleando.", fx: { dmgJ: 50 } },
+      contra: { texto: "Te cazan con el defuser en la mano: caés eliminado.", fx: { killJ: 1 } } }
+  };
+
+  function momentoAsalto() {
+    const t = T();
+    const av = [2, 5];
+    t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])));
+    t.n += 1;
+    const c = ctx();
+    const accs = [ACC_MATAR, ACC_PLANTAR].filter((a) => accionDisponible(a, c, false));
+    const defecto = [...accs].sort((a, b) => riesgoNum(a.riesgo) - riesgoNum(b.riesgo))[0];
+    t.actual = {
+      asalto: true,
+      sit: { id: "asalto-final" },
+      accs, defectoId: defecto ? defecto.id : null,
+      tituloTxt: "⚠ ¡ASALTO FINAL! MATAR O PLANTAR",
+      textoTxt: t.tiempo > 0
+        ? `Quedan ${formatoReloj(t.tiempo)} y no hay plant: se acabó jugar fino. Entrá a matar o plantá el defuser. No hay victoria pasiva.`
+        : "Reloj en cero sin plant: todo se define AHORA. Matá o plantá."
+    };
+    pushTimeline("¡ASALTO FINAL! Matar o plantar.", "duelo");
+    t.quiz = null;
+    return t.actual;
+  }
+
+  function resolverDuelo(gano, via) {
     const t = T();
     if (!t.actual || !t.actual.duelo || t.terminado) return null;
     const yo = t.equipoJ.find((u) => u.hp > 0);
     const el = t.equipoIA.find((u) => u.hp > 0);
+    const esQuiz = via === "quiz";
     let texto, tier;
     if (gano && el) {
       matar(el, true);
       t.duelo1v1 = true;
-      texto = `¡DUELO GANADO! ${el.nombre} cae delante tuyo. Quedás en pie con ${Math.max(0, Math.round(yo ? yo.hp : 0))} de HP.`;
+      texto = esQuiz
+        ? `Leés la jugada como un libro: ${el.nombre} cae en tu trampa. El conocimiento también mata.`
+        : `¡DUELO GANADO! ${el.nombre} cae delante tuyo. Quedás en pie con ${Math.max(0, Math.round(yo ? yo.hp : 0))} de HP.`;
       tier = "ok";
-      t.stats.decisiones.push({ etiqueta: "DUELO 1V1", buena: true });
+      t.stats.decisiones.push({ etiqueta: esQuiz ? "DUELO 1V1 (DESAFÍO)" : "DUELO 1V1", buena: true });
     } else if (yo) {
-      golpear(yo, 55, false);
+      const dmg = esQuiz ? 35 : 55;
+      golpear(yo, dmg, false);
       const muerto = yo.hp <= 0;
       if (muerto) t.duelo1v1 = true;
       texto = muerto
         ? `${el ? el.nombre : "El rival"} te gana el duelo: caés eliminado.`
-        : `Fallás y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue: tenés que ganarlo.`;
+        : esQuiz
+          ? `Fallás el desafío y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue.`
+          : `Fallás y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue: tenés que ganarlo.`;
       tier = muerto ? "contra" : "fallo";
-      t.stats.decisiones.push({ etiqueta: "DUELO 1V1", buena: false });
+      t.stats.decisiones.push({ etiqueta: esQuiz ? "DUELO 1V1 (DESAFÍO)" : "DUELO 1V1", buena: false });
     } else {
       return null;
     }
     pushTimeline(texto, gano ? "ok" : "mal");
     const fin = chequearFin();
-    if (!fin && t.n >= MAX_MOMENTOS) dueloFinal();
+    if (!fin && t.plantado && t.n >= MAX_MOMENTOS) dueloFinal();
     return { tier, texto, fin: t.terminado };
+  }
+
+  // Duelo por conocimiento: una pregunta Siege para ganar el 1v1 sin disparar.
+  function dueloPregunta() {
+    const t = T();
+    const difs = ["facil", "medio", "dificil"];
+    const q = elegirPregunta(difs[Math.floor(Math.random() * difs.length)]);
+    if (!q) return null;
+    t.dueloQuizQ = q;
+    return q;
+  }
+
+  function responderDueloQuiz(idx) {
+    const t = T();
+    const q = t.dueloQuizQ;
+    if (!q) return null;
+    t.dueloQuizQ = null;
+    (t.quizzesIds = t.quizzesIds || []).push(q.id);
+    if (idx === q.ok) {
+      t.intel = Math.min(3, t.intel + 1);
+      pushIntel("Leíste el duelo: +dato confirmado.");
+      const res = resolverDuelo(true, "quiz");
+      return { bien: true, texto: "Correcto. " + (res ? res.texto : ""), res };
+    }
+    t.tiempo = Math.max(0, t.tiempo - 8);
+    const res = resolverDuelo(false, "quiz");
+    return { bien: false, texto: "Fallaste el desafío: −8s y el duelo sigue.", res };
   }
 
   function elegirPregunta(dif) {
@@ -487,7 +578,9 @@
     t.bonoQuiz = 0;
     if (acc.cadena) t.cadena = acc.cadena;
     const fin = chequearFin();
-    if (!fin && t.n >= MAX_MOMENTOS) dueloFinal();
+    // Tope de momentos: con plant se sigue el retake; sin plant el asalto final
+    // (vía momento()) lo decide. El duelo final queda solo como red de seguridad.
+    if (!fin && t.plantado && t.n >= MAX_MOMENTOS) dueloFinal();
     return { tier, p, nivel: nivelProb(p), desglose: acc.verProb ? desglose : [], texto: textoFinal, fin: t.terminado };
   }
 
@@ -495,25 +588,22 @@
     const t = T();
     if (t.terminado) return true;
     const vJ = vivos(t.equipoJ), vR = vivos(t.equipoIA);
+    // Solo hay dos formas de ganar: wipe total o plant que sobrevive al reloj.
     if (vR === 0) return terminar(true, "eliminacion");
     if (vJ === 0) return terminar(false, "eliminacion");
-    if (t.tiempo <= 0) {
-      // Sin tiempo: si hay plant, gana el ataque; si no, la defensa.
-      const atacaJ = t.lado === "ataque";
-      if (t.plantado) return terminar(atacaJ, "plant");
-      return terminar(!atacaJ, "tiempo");
-    }
+    if (t.plantado && t.tiempo <= 0) return terminar(t.lado === "ataque", "plant");
+    // Sin plant y con gente viva NO hay victoria pasiva: decide el asalto final.
     return false;
   }
 
-  // Duelo final: cuando no quedan momentos (o no hay situaciones válidas), la ronda se
-  // define a balas con daño y bajas reales, nunca con moneda al aire.
+  // Duelo final (red de seguridad): se pelea hasta el wipe. Con plant activo y sin
+  // resolución, el plant explota y gana el ataque; sin plant, gana quien tenga más en pie.
   function dueloFinal() {
     const t = T();
     if (t.terminado) return;
     pushTimeline("Se acaba el margen para jugar fino: todo se define a balas en el sitio.", "exec");
     let choques = 0;
-    while (vivos(t.equipoJ) > 0 && vivos(t.equipoIA) > 0 && choques < 4) {
+    while (vivos(t.equipoJ) > 0 && vivos(t.equipoIA) > 0 && choques < 12) {
       choques += 1;
       const bj = aplicarDmg(t.equipoIA, 25 + Math.floor(Math.random() * 40), true);
       const br = vivos(t.equipoJ) > 0 ? aplicarDmg(t.equipoJ, 25 + Math.floor(Math.random() * 40), false) : null;
@@ -526,6 +616,8 @@
     let ganada;
     if (vR === 0) ganada = true;
     else if (vJ === 0) ganada = false;
+    // Con plant activo y sin resolución, el plant explota: gana el ataque.
+    else if (t.plantado) ganada = (t.lado === "ataque");
     else if (vJ !== vR) ganada = vJ > vR;
     else {
       const hpJ = t.equipoJ.reduce((s, u) => s + u.hp, 0);
@@ -588,7 +680,8 @@
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
   window.SIEGE_DLE.tactica = {
-    iniciar, momento, siguiente, resolverAccion, resolverDuelo, responderQuiz, cerrar, auto, calcular, nivelProb,
+    iniciar, momento, siguiente, resolverAccion, resolverDuelo, responderQuiz,
+    dueloPregunta, responderDueloQuiz, cerrar, auto, calcular, nivelProb,
     formatoReloj, NOMBRES_REC, ctx,
     estado: () => ST().tactica
   };
