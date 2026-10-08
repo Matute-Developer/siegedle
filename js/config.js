@@ -3,7 +3,7 @@ window.SIEGE_DLE = window.SIEGE_DLE || {};
 window.SIEGE_DLE.config = {
   nombreJuego: "SIEGE DLE",
   intentosIlimitados: true,
-  version: "0.24.6",
+  version: "0.24.7",
   fase: "juego",
   dedicatoria: "Proyecto dedicado al clan TKOA · Nacho te amo",
   iconosBase: "https://rwlodarczyk.github.io/r6opicons/",
