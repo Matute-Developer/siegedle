@@ -177,8 +177,9 @@ window.SIEGE_DLE.situacionesTacticas = [
   },
   {
     id: "plant-enemigo", lado: "defensa", tMin: 0, tMax: 55, peso: 4,
-    titulo: () => "¡ESTÁN PLANTANDO!",
-    texto: (ctx) => `Escuchás el pitido del defuser en ${ctx.sitio}. Quedan {tiempo} en el reloj.`,
+    titulo: () => ["¡ESTÁN PLANTANDO!", "Defuser en el piso"],
+    texto: (ctx) => [`Escuchás el pitido del defuser en ${ctx.sitio}. Quedan {tiempo} en el reloj.`,
+      `El defuser suena en ${ctx.sitio}: lo están plantando con {tiempo} en el reloj.`],
     quiz: 0, avance: [5, 8],
     acciones: [
       { id: "peek", etiqueta: "PEEK AL PLANT", sub: "Si lo cortás, se acabó. Si fallás, te tradean.", riesgo: "alto", base: 0.5, tags: ["duelo"], estilo: "agresivo", qte: 8,
@@ -845,8 +846,9 @@ window.SIEGE_DLE.situacionesTacticas = [
   {
     id: "exec-plant", lado: "ataque", tMin: 0, tMax: 200, peso: 0,
     cond: (ctx) => !ctx.plantado && (ctx.vivosR <= ctx.vivosJ - 1 || ctx.tiempo < 50),
-    titulo: () => "Momento de ejecutar",
-    texto: () => "Tenés la ventaja o el reloj apura: es hora de entrar al sitio y plantar.",
+    titulo: () => ["Momento de ejecutar", "A cerrar el sitio"],
+    texto: () => ["Tenés la ventaja o el reloj apura: es hora de entrar al sitio y plantar.",
+      "El sitio está maduro: entrá, plantá y que el retake sea problema de ellos."],
     quiz: 0, avance: [6, 10],
     acciones: [
       { id: "plantar", etiqueta: "PLANTAR YA", sub: "Defuser al piso y a defenderlo.", riesgo: "medio", base: 0.62, tags: ["plant"], estilo: "agresivo",
