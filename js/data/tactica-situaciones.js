@@ -15,39 +15,50 @@ window.SIEGE_DLE.situacionesTacticas = [
   // ================= DEFENSA =================
   {
     id: "dron-ventana", lado: "defensa", tMin: 120, tMax: 200, peso: 3,
-    titulo: () => "Dron en la ventana",
-    texto: (ctx) => `Un dron acaba de colarse por una ventana de ${ctx.sitio}. No sabés quién lo maneja ni qué vio.`,
+    titulo: () => ["Dron en la ventana", "Ojo electrónico adentro"],
+    texto: (ctx) => [`Un dron acaba de colarse por una ventana de ${ctx.sitio}. No sabés quién lo maneja ni qué vio.`,
+      `Zumbido en ${ctx.sitio}: entró un dron y está mirando. No sabés cuánto alcanzó a ver.`],
     quiz: 0.15, quizDif: "facil", avance: [8, 14],
     acciones: [
       { id: "romper", etiqueta: "DESTRUIR EL DRON", sub: "Lo rompés, pero el rival confirma gente en la zona.", riesgo: "medio", base: 0.72, tags: ["intel"],
         mods: [["Jammer o utilidad cerca", 8, (c) => c.tiene("mute") || c.tiene("mozzie")], ["Ya te tienen fichado", -10, (c) => c.alerta >= 2]],
         resulta: {
           crit: { texto: "Dron destruido al instante. El rival no llegó a ver nada útil.", fx: { intel: 1 } },
-          ok: { texto: "Dron destruido. Pero alcanzó a transmitir: el rival sospecha movimiento en el sitio.", fx: { intel: 1, alerta: 1 } },
-          parcial: { texto: "Le pegás pero escapa roto. Vio a {aliado} de refilón.", fx: { alerta: 1 } },
-          fallo: { texto: "Errás el tiro y el dron se esconde. Ahora saben dónde estás.", fx: { alerta: 1 } },
+          ok: [{ texto: "Dron destruido. Pero alcanzó a transmitir: el rival sospecha movimiento en el sitio.", fx: { intel: 1, alerta: 1 } },
+            { texto: "Lo rompés de un tiro, aunque ya había recorrido media sala.", fx: { intel: 1, alerta: 1 } }],
+          parcial: [{ texto: "Le pegás pero escapa roto. Vio a {aliado} de refilón.", fx: { alerta: 1 } },
+            { texto: "Lo dejás cojo pero llega a esconderse transmitiendo.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "Errás el tiro y el dron se esconde. Ahora saben dónde estás.", fx: { alerta: 1 } },
+            { texto: "Fallás y el dron se va intacto con tu posición.", fx: { alerta: 1 } }],
           contra: { texto: "Al romperlo hacés ruido de más: el rival marca tu posición exacta.", fx: { alerta: 2 } } } },
       { id: "ignorar", etiqueta: "IGNORARLO", sub: "Cero riesgo, pero les regalás información.", riesgo: "bajo", base: 0.85, tags: ["intel"], estilo: "pasivo",
         resulta: {
           crit: { texto: "El dron pasa de largo sin ver nada. Punto para la paciencia.", fx: {} },
-          ok: { texto: "El dron recorre y se va. Probablemente vio algo, pero nada claro.", fx: { alerta: 1 } },
-          parcial: { texto: "El dron se queda merodeando: alguien va a venir a mirar.", fx: { alerta: 1 } },
-          fallo: { texto: "El dron te encuentra quieto y transmite tu posición.", fx: { alerta: 2 } },
+          ok: [{ texto: "El dron recorre y se va. Probablemente vio algo, pero nada claro.", fx: { alerta: 1 } },
+            { texto: "Pasa, mira poco y se va. Información mínima para ellos.", fx: { alerta: 1 } }],
+          parcial: [{ texto: "El dron se queda merodeando: alguien va a venir a mirar.", fx: { alerta: 1 } },
+            { texto: "Se queda dando vueltas: esa zona va a recibir visita.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "El dron te encuentra quieto y transmite tu posición.", fx: { alerta: 2 } },
+            { texto: "Te enfoca de lleno: tu posición queda cantada.", fx: { alerta: 2 } }],
           contra: { texto: "Era el dron de Twitch: además de verte, rompe tu utilidad cercana.", fx: { alerta: 2, intel: -1 } } } },
       { id: "rotar", etiqueta: "ROTAR EN SILENCIO", sub: "Cambiás el ángulo, pero dejás la ventana libre.", riesgo: "bajo", base: 0.85, tags: ["rotacion"], estilo: "pasivo",
         resulta: {
           crit: { texto: "Rotás sin hacer ruido y quedás en un ángulo nuevo. El dron mira una sala vacía.", fx: { intel: 1 } },
-          ok: { texto: "Cambiaste de posición. El dron vio movimiento, pero ya no estás ahí.", fx: {} },
-          parcial: { texto: "Rotás tarde: el dron alcanza a ver hacia dónde fuiste.", fx: { alerta: 1 } },
-          fallo: { texto: "Hacés ruido al rotar y el dron te sigue. Misma posición, pero avisada.", fx: { alerta: 1 } },
+          ok: [{ texto: "Cambiaste de posición. El dron vio movimiento, pero ya no estás ahí.", fx: {} },
+            { texto: "Rotación limpia: el dron mira donde estabas.", fx: {} }],
+          parcial: [{ texto: "Rotás tarde: el dron alcanza a ver hacia dónde fuiste.", fx: { alerta: 1 } },
+            { texto: "Te movés pero el dron sigue tu dirección.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "Hacés ruido al rotar y el dron te sigue. Misma posición, pero avisada.", fx: { alerta: 1 } },
+            { texto: "La rotación hace ruido y el dron no te pierde pisada.", fx: { alerta: 1 } }],
           contra: { texto: "Te cruzás con el dron de frente: te ve la cara y la transmite.", fx: { alerta: 2 } } } }
     ]
   },
   {
     id: "c4-pasos", lado: "defensa", tMin: 40, tMax: 160, peso: 3,
     cond: (ctx) => ctx.rec("c4") > 0,
-    titulo: () => "Pasos debajo de la sala",
-    texto: (ctx) => `Escuchás pasos justo debajo de ${ctx.sitio}. Tenés un C4 preparado en el piso. No sabés si es uno o varios.`,
+    titulo: () => ["Pasos debajo de la sala", "Alguien abajo, C4 listo"],
+    texto: (ctx) => [`Escuchás pasos justo debajo de ${ctx.sitio}. Tenés un C4 preparado en el piso. No sabés si es uno o varios.`,
+      `Pisadas bajo ${ctx.sitio} y tu C4 pegado al techo. Pueden ser uno o un grupo entero.`],
     quiz: 0.2, quizDif: "facil", avance: [6, 12],
     acciones: [
       { id: "detonar", etiqueta: "DETONAR EL C4 AHORA", sub: "Ventana inmediata, pero puede que aún no estén en el radio.", riesgo: "alto", reqRec: "c4", consume: "c4", base: 0.55, tags: ["c4"], estilo: "agresivo",
@@ -133,8 +144,9 @@ window.SIEGE_DLE.situacionesTacticas = [
   {
     id: "thermite-muro", lado: "defensa", tMin: 60, tMax: 200, peso: 3,
     cond: (ctx) => ctx.rival("thermite") || ctx.rival("hibana") || ctx.rival("ace"),
-    titulo: () => "Carga en la pared reforzada",
-    texto: () => "Escuchás el pitido de una carga colocándose en la pared reforzada. Van a abrir.",
+    titulo: () => ["Carga en la pared reforzada", "Van a abrir el muro"],
+    texto: () => ["Escuchás el pitido de una carga colocándose en la pared reforzada. Van a abrir.",
+      "Pared reforzada comprometida: están por volarla. Quedan segundos."],
     quiz: 0.25, quizDif: "experto", avance: [8, 14],
     acciones: [
       { id: "trick", etiqueta: "TRICK ELÉCTRICO", sub: "Si sale, no abren. Si hay Thatcher cubriendo, duele.", riesgo: "alto", reqOp: ["bandit", "kaid"], consume: "bat", base: 0.62, tags: ["breach", "antigadget"], estilo: "agresivo",
@@ -229,39 +241,50 @@ window.SIEGE_DLE.situacionesTacticas = [
   {
     id: "iq-scan", lado: "defensa", tMin: 50, tMax: 200, peso: 2,
     cond: (ctx) => ctx.rival("iq"),
-    titulo: () => "IQ está escaneando",
-    texto: () => "Escuchás el escáner de IQ barriendo la zona: está buscando tus dispositivos.",
+    titulo: () => ["IQ está escaneando", "Barrido electrónico"],
+    texto: () => ["Escuchás el escáner de IQ barriendo la zona: está buscando tus dispositivos.",
+      "El escáner de IQ pasa por tus gadgets: si encuentra algo, lo canta."],
     quiz: 0.2, quizDif: "facil", avance: [8, 12],
     acciones: [
       { id: "apagar", etiqueta: "APAGAR TODO", sub: "Vigil o Mute la dejan ciega, pero perdés presencia.", riesgo: "medio", reqOp: ["vigil", "mute", "mozzie", "solis"], base: 0.68, tags: ["antigadget"],
         mods: [["Vigil con ERC disponible", 8, (c) => c.tiene("vigil")]],
         resulta: {
           crit: { texto: "La dejás completamente ciega: su escáner no encuentra nada y el equipo rival duda.", fx: { intel: 1 } },
-          ok: { texto: "Apagás y escondés lo importante. IQ se va con las manos vacías.", fx: {} },
-          parcial: { texto: "Escondés la mitad: encuentra algo menor pero no lo clave.", fx: { alerta: 1 } },
-          fallo: { texto: "Tardás en apagar: ya marcó tus posiciones.", fx: { alerta: 2 } },
+          ok: [{ texto: "Apagás y escondés lo importante. IQ se va con las manos vacías.", fx: {} },
+            { texto: "Todo apagado a tiempo: el escáner barre una zona muerta.", fx: {} }],
+          parcial: [{ texto: "Escondés la mitad: encuentra algo menor pero no lo clave.", fx: { alerta: 1 } },
+            { texto: "Apagás tarde lo importante: marca un gadget secundario.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "Tardás en apagar: ya marcó tus posiciones.", fx: { alerta: 2 } },
+            { texto: "El escáner completa el barrido antes de que apagues.", fx: { alerta: 2 } }],
           contra: { texto: "Al moverte para apagar, te ve a vos en persona.", fx: { alerta: 2 } } } },
       { id: "repos", etiqueta: "REPOSICIONAR", sub: "Te movés vos en vez de la utilidad.", riesgo: "bajo", base: 0.85, tags: ["rotacion"], estilo: "pasivo",
         resulta: {
           crit: { texto: "Te movés justo a tiempo: escanea una sala vacía.", fx: {} },
-          ok: { texto: "Cambiaste de lugar. Lo que marcó ya no sirve.", fx: {} },
-          parcial: { texto: "Te movés pero tus gadgets quedan marcados.", fx: { alerta: 1 } },
-          fallo: { texto: "Te ve moviéndote en vivo.", fx: { alerta: 1 } },
+          ok: [{ texto: "Cambiaste de lugar. Lo que marcó ya no sirve.", fx: {} },
+            { texto: "Nueva posición: su escaneo quedó viejo.", fx: {} }],
+          parcial: [{ texto: "Te movés pero tus gadgets quedan marcados.", fx: { alerta: 1 } },
+            { texto: "Vos zafás, pero tu utilidad queda fichada.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "Te ve moviéndote en vivo.", fx: { alerta: 1 } },
+            { texto: "Te agarra en plena rotación.", fx: { alerta: 1 } }],
           contra: { texto: "Te movés directo hacia donde miraba: información gratis para ella.", fx: { alerta: 2 } } } },
       { id: "aguantar", etiqueta: "AGUANTAR", sub: "Que escanee: tus balas no necesitan gadgets.", riesgo: "medio", base: 0.75, tags: ["ancla"],
         resulta: {
           crit: { texto: "Escanea todo y aun así entra confiada a tu mira.", fx: { intel: 1 } },
-          ok: { texto: "Encuentra tus gadgets pero no tus posiciones. Ventaja tuya.", fx: {} },
-          parcial: { texto: "Marca tu utilidad clave y el rival la rompe desde lejos.", fx: { alerta: 1 } },
-          fallo: { texto: "Con toda la info, el rival ejecuta perfecto sobre tu zona.", fx: { alerta: 2 } },
+          ok: [{ texto: "Encuentra tus gadgets pero no tus posiciones. Ventaja tuya.", fx: {} },
+            { texto: "Sabe qué tenés, pero no dónde estás.", fx: {} }],
+          parcial: [{ texto: "Marca tu utilidad clave y el rival la rompe desde lejos.", fx: { alerta: 1 } },
+            { texto: "Pierde un gadget importante por el escaneo.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "Con toda la info, el rival ejecuta perfecto sobre tu zona.", fx: { alerta: 2 } },
+            { texto: "Ejecutan sobre seguro con tu posición marcada.", fx: { alerta: 2 } }],
           contra: { texto: "IQ no solo escanea: te pincha la posición y te cae una frag.", fx: { dmgJ: 50 } } } }
     ]
   },
   {
     id: "dok-hack", lado: "defensa", tMin: 40, tMax: 200, peso: 2,
     cond: (ctx) => ctx.rival("dokkaebi"),
-    titulo: () => "Hackeo de Dokkaebi",
-    texto: () => "Tu teléfono vibra: Dokkaebi hackeó las líneas. Si suena, te ubican.",
+    titulo: () => ["Hackeo de Dokkaebi", "Teléfonos intervenidos"],
+    texto: () => ["Tu teléfono vibra: Dokkaebi hackeó las líneas. Si suena, te ubican.",
+      "Llamada entrante hackeada: si atiende alguien, cantan posiciones."],
     quiz: 0.2, quizDif: "facil", avance: [8, 12],
     acciones: [
       { id: "romper", etiqueta: "ROMPER LOS TELÉFONOS", sub: "Silencio total, pero perdés llamadas de info.", riesgo: "bajo", base: 0.88, tags: ["antigadget"], estilo: "pasivo",
@@ -320,6 +343,98 @@ window.SIEGE_DLE.situacionesTacticas = [
     ]
   },
   {
+    id: "eco-pasillos", lado: "defensa", tMin: 40, tMax: 200, peso: 2,
+    titulo: () => ["Eco en los pasillos", "Ruido sin dueño"],
+    texto: (ctx) => [`Se escucha movimiento en los pasillos de ${ctx.sitio}, pero sin ver nada. Puede ser uno solo o la entrada completa.`,
+      `Pasos y murmullos cerca de ${ctx.sitio}. Algo se mueve, pero no sabés qué ni cuántos son.`],
+    quiz: 0.1, quizDif: "medio", avance: [8, 12],
+    acciones: [
+      { id: "escuchar", etiqueta: "ESCUCHAR QUIETO", sub: "El oído afina solo si no te movés.", riesgo: "bajo", base: 0.8, tags: ["intel"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Escuchás todo: cantidad, dirección y hasta el operador por los pasos.", fx: { intel: 2 } },
+          ok: { texto: "Identificás por dónde vienen y cuántos son aprox.", fx: { intel: 1 } },
+          parcial: { texto: "Escuchás algo, pero el eco te confunde la dirección.", fx: {} },
+          fallo: { texto: "Mientras escuchás, te dronan la posición.", fx: { alerta: 1 } },
+          contra: { texto: "El ruido era un señuelo: mientras escuchabas, entraron por otro lado.", fx: { alerta: 2 } } } },
+      { id: "picar", etiqueta: "PICAR EL SONIDO", sub: "Salir a buscar al que hace ruido.", riesgo: "medio", base: 0.6, tags: ["duelo"], estilo: "agresivo",
+        resulta: {
+          crit: { texto: "Lo agarrás desprevenido haciendo ruido: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "Encontrás al que hacía ruido: {rival} eliminado.", fx: { killR: 1 } },
+          parcial: { texto: "Intercambiás con el que hacía ruido.", fx: { dmgR: 45, dmgJ: 35 } },
+          fallo: { texto: "El del ruido tenía compañía: te reciben entre dos.", fx: { dmgJ: 60 } },
+          contra: { texto: "Saliste a un ruido armado: era una emboscada.", fx: { killJ: 1 } } } },
+      { id: "camara", etiqueta: "REVISAR CÁMARAS", sub: "Confirmar con ojos antes de moverte.", riesgo: "bajo", base: 0.75, tags: ["intel"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Cámara perfecta: los contás a todos y sabés el plan.", fx: { intel: 2 } },
+          ok: { texto: "Las cámaras confirman movimiento en una zona.", fx: { intel: 1 } },
+          parcial: { texto: "Las cámaras están rotas en esa zona: solo audio.", fx: {} },
+          fallo: { texto: "Mirando cámaras perdés tu ángulo unos segundos clave.", fx: { alerta: 1 } },
+          contra: { texto: "Mientras mirás cámaras, te entran por tu propio ángulo.", fx: { dmgJ: 50 } } } }
+    ]
+  },
+  {
+    id: "camara-rota", lado: "defensa", tMin: 30, tMax: 200, peso: 2,
+    titulo: () => ["Cámara destruida", "Nos quedamos ciegos ahí"],
+    texto: (ctx) => [`Acaban de romper una cámara cerca de ${ctx.sitio}. Alguien está trabajando esa zona.`,
+      `Se apagó una cámara: la rompieron a propósito. Esa entrada quedó sin ojos.`],
+    quiz: 0.1, quizDif: "medio", avance: [8, 12],
+    acciones: [
+      { id: "cubrir", etiqueta: "ROTAR A CUBRIR", sub: "Tapar el hueco con un cuerpo.", riesgo: "medio", base: 0.68, tags: ["rotacion"],
+        resulta: {
+          crit: { texto: "Llegás justo y agarrás al que rompía entrando: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "El hueco queda cubierto con balas en vez de cámara.", fx: {} },
+          parcial: { texto: "Cubrís pero dejás tu zona anterior floja.", fx: { alerta: 1 } },
+          fallo: { texto: "Llegás tarde: ya pasaron por ahí.", fx: { alerta: 1 } },
+          contra: { texto: "El que rompía te esperaba cubriendo la rotación.", fx: { dmgJ: 55 } } } },
+      { id: "hueco", etiqueta: "DEJAR EL HUECO", sub: "Que entren: los esperás del otro lado.", riesgo: "bajo", base: 0.8, tags: ["trampa"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Entran confiados al hueco y caen en tu crossfire.", fx: { killR: 1 } },
+          ok: { texto: "El hueco es una trampa: los recibís avisado.", fx: { intel: 1 } },
+          parcial: { texto: "Entran con cuidado y no pican la trampa.", fx: {} },
+          fallo: { texto: "El hueco era más grande de lo que creías: se meten dos.", fx: { alerta: 1 } },
+          contra: { texto: "Mientras mirás el hueco, entran por otro lado.", fx: { alerta: 2 } } } },
+      { id: "buscar", etiqueta: "BUSCAR AL QUE ROMPIÓ", sub: "Está cerca y distraído.", riesgo: "alto", base: 0.52, tags: ["duelo"], estilo: "agresivo",
+        resulta: {
+          crit: { texto: "Lo encontrás rompiendo y lo sacás gratis: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "Lo cazás antes de que se acomode: {rival} eliminado.", fx: { killR: 1 } },
+          parcial: { texto: "Lo encontrás pero ya está en posición: intercambio parejo.", fx: { dmgR: 40, dmgJ: 40 } },
+          fallo: { texto: "Rompió y se fue: lo buscás donde ya no está.", fx: { alerta: 1 } },
+          contra: { texto: "Rompía acompañado: te recibe el compañero.", fx: { killJ: 1 } } } }
+    ]
+  },
+  {
+    id: "rival-gasta", lado: "defensa", tMin: 80, tMax: 200, peso: 2,
+    cond: (ctx) => ctx.intel >= 1,
+    titulo: () => ["Gastan utilidad temprano", "Se apuran"],
+    texto: () => ["El rival está gastando utilidad muy temprano: flashes, drones, de todo. Quieren entrar ya.",
+      "Lluvia de utilidad rival antes de tiempo: están apurados o nerviosos."],
+    quiz: 0.1, quizDif: "medio", avance: [8, 12],
+    acciones: [
+      { id: "castigar", etiqueta: "CASTIGAR AHORA", sub: "Apurados cometen errores.", riesgo: "alto", base: 0.58, tags: ["duelo"], estilo: "agresivo",
+        mods: [["Van apurados", 8, () => true]],
+        resulta: {
+          crit: { texto: "Salís en el caos y pescás a {rival} con la granada en la mano.", fx: { killR: 1 } },
+          ok: { texto: "Aprovechás el apuro: {rival} eliminado.", fx: { killR: 1 } },
+          parcial: { texto: "Los apurás más todavía, pero sin bajas.", fx: { alerta: 1 } },
+          fallo: { texto: "El apuro era un bait para sacarte.", fx: { dmgJ: 55 } },
+          contra: { texto: "Salís al caos y te comés toda la utilidad junta.", fx: { dmgJ: 75 } } } },
+      { id: "anotar", etiqueta: "ANOTAR Y ESPERAR", sub: "Que gasten: después no tienen nada.", riesgo: "bajo", base: 0.85, tags: ["intel"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Gastan todo y no entran: los contás sin nada en los bolsillos.", fx: { intel: 2 } },
+          ok: { texto: "Dejás que se vacíen: cada cosa que tiran es una menos para el plant.", fx: { intel: 1 } },
+          parcial: { texto: "Gastan bastante, pero guardan lo importante.", fx: {} },
+          fallo: { texto: "Mientras anotás, se acomodan gratis.", fx: { alerta: 1 } },
+          contra: { texto: "El 'gasto' era para fijarte mientras rotaban por otro lado.", fx: { alerta: 2 } } } },
+      { id: "rotar", etiqueta: "ROTAR LEJOS DEL RUIDO", sub: "Que gasten donde ya no estás.", riesgo: "medio", base: 0.75, tags: ["rotacion"],
+        resulta: {
+          crit: { texto: "Rotás perfecto: gastan todo en una zona vacía.", fx: {} },
+          ok: { texto: "Te movés y su utilidad cae al aire.", fx: {} },
+          parcial: { texto: "Rotás con ruido: saben que te moviste.", fx: { alerta: 1 } },
+          fallo: { texto: "Rotás directo a donde tiraban la utilidad.", fx: { dmgJ: 40 } },
+          contra: { texto: "Te esperan en la rotación.", fx: { dmgJ: 60 } } } }
+    ]
+  },
+  {
     id: "clutch-def", lado: "defensa", tMin: 0, tMax: 200, peso: 0,
     cond: (ctx) => ctx.vivosJ === 1 && ctx.vivosR >= 2,
     titulo: () => "CLUTCH: 1 VS RESTO",
@@ -347,6 +462,45 @@ window.SIEGE_DLE.situacionesTacticas = [
           parcial: { texto: "Lo dejás herido pero sigue en pie.", fx: { dmgR: 65 } },
           fallo: { texto: "El C4 no agarra a nadie. Te quedaste sin nada.", fx: { utilMal: 1 } },
           contra: { texto: "Escuchan el C4 y te cazan mientras lo preparás.", fx: { killJ: 1 } } } }
+    ]
+  },
+  {
+    id: "fuego-distancia", lado: "defensa", tMin: 0, tMax: 200, peso: 1,
+    titulo: () => "Intercambio a distancia",
+    texto: (ctx) => `Disparos esporádicos cruzando ${ctx.sitio}. Nadie confirma nada todavía: es ruido y presión.`,
+    quiz: 0, avance: [8, 14],
+    acciones: [
+      { id: "peek", etiqueta: "DEVOLVER EL PEEK", sub: "Alguien tiene que ganar ese ángulo.", riesgo: "medio", base: 0.55, tags: ["duelo"], estilo: "agresivo",
+        mods: [["Tenés info del otro lado", 8, (c) => c.intel >= 2]],
+        resulta: {
+          crit: { texto: "Peek perfecto: {rival} cae antes de esconderse.", fx: { killR: 1 } },
+          ok: [{ texto: "Ganás el intercambio: {rival} eliminado.", fx: { killR: 1 } },
+            { texto: "Lo agarrás recargando: {rival} eliminado.", fx: { killR: 1 } }],
+          parcial: [{ texto: "Intercambiás daño parejo y cada uno vuelve a su ángulo.", fx: { dmgR: 35, dmgJ: 35 } },
+            { texto: "Lo tocás pero te responden: ambos heridos.", fx: { dmgR: 40, dmgJ: 30 } }],
+          fallo: [{ texto: "Perdés el peek y tenés que esconderte a curarte.", fx: { dmgJ: 50 } },
+            { texto: "El rival te gana el ángulo limpio.", fx: { dmgJ: 55 } }],
+          contra: { texto: "El intercambio era una trampa: te tradean al asomar.", fx: { killJ: 1 } } } },
+      { id: "rafaga", etiqueta: "RÁFAGA DE COBERTURA", sub: "Gastás balas para frenar el avance.", riesgo: "bajo", base: 0.8, tags: ["deny"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "La ráfaga los clava al piso y {aliado} aprovecha para marcar todo.", fx: { intel: 1, tiempo: -8 } },
+          ok: [{ texto: "El fuego de cobertura frena el avance rival unos segundos.", fx: { tiempo: -8 } },
+            { texto: "Los obligás a agacharse: ganás tiempo sin regalar nada.", fx: { tiempo: -8 } }],
+          parcial: [{ texto: "Frenan a medias: avanzan igual pero más lento.", fx: { tiempo: -5 } },
+            { texto: "Gastás muchas balas para poco efecto.", fx: {} }],
+          fallo: [{ texto: "La ráfaga no frena a nadie y delatás tu posición.", fx: { alerta: 1 } },
+            { texto: "Disparás al aire: ruido gratis para el rival.", fx: { alerta: 1 } }],
+          contra: { texto: "Mientras cubrís, te flanquean por el ruido.", fx: { dmgJ: 45 } } } },
+      { id: "angulo", etiqueta: "AGUANTAR EL ÁNGULO", sub: "Quietud total hasta que asomen.", riesgo: "bajo", base: 0.85, tags: ["ancla"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Paciencia total: el primero que asoma se lleva tus balas.", fx: { killR: 1 } },
+          ok: [{ texto: "Aguantás perfecto: el rival no se anima a picar.", fx: {} },
+            { texto: "Ni se mueven: tu ángulo manda en la zona.", fx: {} }],
+          parcial: [{ texto: "Te tiran utilidad para sacarte del ángulo.", fx: { dmgJ: 20 } },
+            { texto: "Te obligan a moverte con presión.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "Te duermen el ángulo con paciencia y te lo quitan.", fx: { alerta: 1 } },
+            { texto: "Aguantás tanto que el rival rota gratis por otro lado.", fx: { alerta: 1 } }],
+          contra: { texto: "Te encuentran quieto y te caen con todo.", fx: { dmgJ: 60 } } } }
     ]
   },
   {
@@ -382,8 +536,9 @@ window.SIEGE_DLE.situacionesTacticas = [
   // ================= ATAQUE =================
   {
     id: "droneo", lado: "ataque", tMin: 130, tMax: 200, peso: 3,
-    titulo: () => "Fase de drones",
-    texto: (ctx) => `Entrás con los drones a ${ctx.sitio}. Cada segundo de info vale oro, pero cada dron perdido es un ojo menos.`,
+    titulo: () => ["Fase de drones", "Ojos adentro"],
+    texto: (ctx) => [`Entrás con los drones a ${ctx.sitio}. Cada segundo de info vale oro, pero cada dron perdido es un ojo menos.`,
+      `Tus drones recorren ${ctx.sitio}. Ubicar a los defensores ahora vale más que cualquier bala.`],
     quiz: 0.15, quizDif: "facil", avance: [10, 16],
     acciones: [
       { id: "fondo", etiqueta: "DRONAR A FONDO", sub: "Máxima info, pero gastás drones.", riesgo: "bajo", reqRec: "dron", base: 0.8, tags: ["intel"],
@@ -568,6 +723,96 @@ window.SIEGE_DLE.situacionesTacticas = [
     ]
   },
   {
+    id: "ancla-sitio", lado: "ataque", tMin: 40, tMax: 200, peso: 2,
+    titulo: () => ["Un ancla encerrado", "Rata en el sitio"],
+    texto: (ctx) => [`Hay un defensor encerrado en ${ctx.sitio} que no sale ni con música. Sacarlo cuesta, pero vale.`,
+      `Detectás a uno fijo en ${ctx.sitio}: juega quieto y cubre todo. Hay que sacarlo.`],
+    quiz: 0.1, quizDif: "medio", avance: [8, 12],
+    acciones: [
+      { id: "aislar", etiqueta: "AISLARLO", sub: "Cortarle ayuda y dejarlo solo.", riesgo: "medio", base: 0.62, tags: ["duelo"],
+        resulta: {
+          crit: { texto: "Lo aislás perfecto y cae sin que nadie lo ayude: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "Lo dejás solo y lo sacás: {rival} eliminado.", fx: { killR: 1 } },
+          parcial: { texto: "Lo presionás pero lo bancan desde otro ángulo.", fx: { dmgR: 40 } },
+          fallo: { texto: "Al querer aislarlo te metés en su crossfire.", fx: { dmgJ: 55 } },
+          contra: { texto: "El 'solo' tenía a todo el equipo mirándolo.", fx: { killJ: 1 } } } },
+      { id: "cortar", etiqueta: "CORTAR SU ROTACIÓN", sub: "Que no se mueva ni se cure.", riesgo: "medio", base: 0.7, tags: ["intel"],
+        resulta: {
+          crit: { texto: "Le cortás todo: rotación, ayuda y salida. Pan comido después.", fx: { intel: 1 } },
+          ok: { texto: "Queda encerrado sin apoyo.", fx: {} },
+          parcial: { texto: "Lo presionás pero zafa rotando.", fx: {} },
+          fallo: { texto: "Mientras lo cortás, otro te corta a vos.", fx: { dmgJ: 45 } },
+          contra: { texto: "El ancla era carnada: te encierran a vos.", fx: { killJ: 1 } } } },
+      { id: "dodos", etiqueta: "ENTRAR DE A DOS", sub: "Tradeo cantado si van juntos.", riesgo: "alto", base: 0.55, tags: ["duelo"], estilo: "agresivo",
+        resulta: {
+          crit: { texto: "Entran juntos y lo borran sin despeinarse: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "El tradeo funciona: {rival} eliminado.", fx: { killR: 1 } },
+          parcial: { texto: "Intercambian uno por uno.", fx: { killR: 1, killJ: 1 } },
+          fallo: { texto: "El ancla se lleva al primero y el segundo retrocede.", fx: { killJ: 1 } },
+          contra: { texto: "Los esperaba con ayuda: doble baja rival.", fx: { killJ: 2 } } } }
+    ]
+  },
+  {
+    id: "info-parcial", lado: "ataque", tMin: 60, tMax: 200, peso: 2,
+    titulo: () => ["Info a medias", "Solo viste a dos"],
+    texto: () => ["Solo ubicaste a dos defensores de cinco. El resto es niebla: pueden estar en cualquier lado.",
+      "Tu info está incompleta: dos vistos, tres fantasmas. Jugar así es picante."],
+    quiz: 0.15, quizDif: "medio", avance: [8, 12],
+    acciones: [
+      { id: "dronar", etiqueta: "SEGUIR DRONANDO", sub: "Completar el mapa antes de entrar.", riesgo: "bajo", base: 0.78, tags: ["intel"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Dronaje completo: los cinco ubicados y el plan clarito.", fx: { intel: 2 } },
+          ok: { texto: "Encontrás a dos más: ya casi está el mapa.", fx: { intel: 1 } },
+          parcial: { texto: "Dronás pero te rompen los drones.", fx: {} },
+          fallo: { texto: "Perdés tiempo y drones sin ver nada nuevo.", fx: { tiempo: -12 } },
+          contra: { texto: "Mientras dronás, te adelantan y te cazan un dron... y casi a vos.", fx: { alerta: 1, dmgJ: 25 } } } },
+      { id: "jugar", etiqueta: "JUGAR CON LO QUE HAY", sub: "Dos vistos alcanzan si sos rápido.", riesgo: "medio", base: 0.62, tags: ["duelo"], estilo: "agresivo",
+        resulta: {
+          crit: { texto: "Con poca info igual los pasás por arriba: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "La velocidad compensa la info: entrás bien.", fx: {} },
+          parcial: { texto: "Te topás con uno que no tenías: intercambio parejo.", fx: { dmgR: 35, dmgJ: 35 } },
+          fallo: { texto: "El que no viste te estaba esperando.", fx: { dmgJ: 60 } },
+          contra: { texto: "Los tres fantasmas te arman la bienvenida.", fx: { killJ: 1 } } } },
+      { id: "presion", etiqueta: "PRESIONAR PARA FORZAR INFO", sub: "Que se muestren solos.", riesgo: "alto", base: 0.55, tags: ["intel", "duelo"], estilo: "agresivo",
+        resulta: {
+          crit: { texto: "Presionás y se muestran todos: info completa y un pick de regalo.", fx: { killR: 1, intel: 2 } },
+          ok: { texto: "La presión los obliga a moverse: ahora los ves.", fx: { intel: 1 } },
+          parcial: { texto: "Se muestran a medias: algo de info, algo de riesgo.", fx: { intel: 1, dmgJ: 25 } },
+          fallo: { texto: "Presionás y no se muestra nadie: quedaste vendido.", fx: { alerta: 2 } },
+          contra: { texto: "La presión te deja regalado y te castigan.", fx: { killJ: 1 } } } }
+    ]
+  },
+  {
+    id: "reloj-quema", lado: "ataque", tMin: 50, tMax: 130, peso: 2,
+    titulo: () => ["El reloj quema", "Mitad de ronda, nada claro"],
+    texto: (ctx) => [`Pasó la mitad de la ronda y no hay entrada clara en ${ctx.sitio}. El reloj empieza a pesar.`,
+      `Quedan {tiempo} y el sitio sigue cerrado. Hay que decidir el ritmo ahora.`],
+    quiz: 0.1, quizDif: "medio", avance: [8, 12],
+    acciones: [
+      { id: "acelerar", etiqueta: "ACELERAR", sub: "Pisar el acelerador de golpe.", riesgo: "alto", base: 0.52, tags: ["rush"], estilo: "agresivo",
+        resulta: {
+          crit: { texto: "Acelerás de golpe y los pasás por arriba: {rival} eliminado.", fx: { killR: 1 } },
+          ok: { texto: "El cambio de ritmo funciona: ganás terreno clave.", fx: { tiempo: -10 } },
+          parcial: { texto: "Acelerás pero a los tiros: intercambio parejo.", fx: { dmgR: 40, dmgJ: 40 } },
+          fallo: { texto: "Acelerás contra un crossfire armado.", fx: { dmgJ: 60 } },
+          contra: { texto: "Te esperaban acelerando: te frenan en seco.", fx: { killJ: 1 } } } },
+      { id: "reagrupar", etiqueta: "REAGRUPAR Y EJECUTAR", sub: "Juntarse y entrar como equipo.", riesgo: "medio", base: 0.65, tags: ["plant"],
+        resulta: {
+          crit: { texto: "Ejecución perfecta de manual: entran juntos y no hay respuesta.", fx: { killR: 1 } },
+          ok: { texto: "La ejecución ordenada abre el sitio.", fx: {} },
+          parcial: { texto: "Ejecutan pero desprolijos: entran a los tiros.", fx: { dmgJ: 30 } },
+          fallo: { texto: "Mientras se juntan, los cazan rotando.", fx: { dmgJ: 50 } },
+          contra: { texto: "Juntarse hizo ruido: les tiran todo junto.", fx: { killJ: 1 } } } },
+      { id: "trabajar", etiqueta: "SEGUIR TRABAJANDO", sub: "Paciencia un rato más.", riesgo: "bajo", base: 0.78, tags: ["reloj"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "La paciencia paga: encontrás el hueco perfecto.", fx: { intel: 1 } },
+          ok: { texto: "Siguen trabajando el mapa sin regalar nada.", fx: {} },
+          parcial: { texto: "Se consume tiempo valioso sin avances.", fx: { tiempo: -12 } },
+          fallo: { texto: "Tanto esperar y el reloj ya apura de verdad.", fx: { tiempo: -18 } },
+          contra: { texto: "Mientras trabajan tranquilos, les cazan un dron... y un jugador.", fx: { killJ: 1 } } } }
+    ]
+  },
+  {
     id: "clutch-atk", lado: "ataque", tMin: 0, tMax: 200, peso: 0,
     cond: (ctx) => ctx.vivosJ === 1 && ctx.vivosR >= 2,
     titulo: () => "CLUTCH: 1 VS RESTO",
@@ -625,6 +870,45 @@ window.SIEGE_DLE.situacionesTacticas = [
           parcial: { texto: "Limpias a medias: plantás pero con gente viva.", fx: { planta: true } },
           fallo: { texto: "Al limpiar te encuentran y te frenan.", fx: { dmgJ: 50 } },
           contra: { texto: "La 'limpieza' era una emboscada.", fx: { killJ: 1 } } } }
+    ]
+  },
+  {
+    id: "disputa-angulo", lado: "ataque", tMin: 0, tMax: 200, peso: 1,
+    titulo: () => "Disputa del ángulo",
+    texto: (ctx) => `Hay un ángulo largo sin dueño claro en ${ctx.sitio}. Quien lo tome primero manda en la zona.`,
+    quiz: 0, avance: [8, 14],
+    acciones: [
+      { id: "tomar", etiqueta: "TOMAR EL ÁNGULO", sub: "Duelo directo por el control.", riesgo: "medio", base: 0.6, tags: ["duelo"], estilo: "agresivo",
+        mods: [["Tenés info del otro lado", 8, (c) => c.intel >= 2]],
+        resulta: {
+          crit: { texto: "Lo tomás perfecto y encima {rival} pica regalado.", fx: { killR: 1, intel: 1 } },
+          ok: [{ texto: "Ganás el ángulo: la zona es tuya.", fx: {} },
+            { texto: "El ángulo queda tomado sin disparar un tiro.", fx: {} }],
+          parcial: [{ texto: "Lo disputan tiro a tiro: nadie lo tiene claro.", fx: { dmgR: 30, dmgJ: 30 } },
+            { texto: "Intercambiás daño y el ángulo sigue en pelea.", fx: { dmgR: 35, dmgJ: 35 } }],
+          fallo: [{ texto: "El ángulo era trampa: te reciben armado.", fx: { dmgJ: 50 } },
+            { texto: "Llegás segundo al ángulo y te castigan.", fx: { dmgJ: 55 } }],
+          contra: { texto: "Te estaban esperando con crossfire.", fx: { killJ: 1 } } } },
+      { id: "humo", etiqueta: "HUMO Y CRUZAR", sub: "Gastás utilidad para pasar gratis.", riesgo: "bajo", consume: "util", base: 0.78, tags: ["humo"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "El humo es perfecto: cruzás y encima escuchás todo del otro lado.", fx: { intel: 1 } },
+          ok: [{ texto: "Cruzás tapado sin que te vean.", fx: {} },
+            { texto: "El humo te regala el cruce limpio.", fx: {} }],
+          parcial: [{ texto: "El humo tapa a medias: pasás pero marcado.", fx: { alerta: 1 } },
+            { texto: "Cruzás justo cuando se disipa: te ven de refilón.", fx: { alerta: 1 } }],
+          fallo: [{ texto: "El humo cae mal y cruzás a la vista de todos.", fx: { dmgJ: 40 } },
+            { texto: "Humo gastado y cruce regalado.", fx: { utilMal: 1, alerta: 1 } }],
+          contra: { texto: "Te esperan a la salida del humo.", fx: { dmgJ: 60 } } } },
+      { id: "error", etiqueta: "ESPERAR EL ERROR", sub: "Que el ángulo se regale solo.", riesgo: "bajo", base: 0.8, tags: ["reloj"], estilo: "pasivo",
+        resulta: {
+          crit: { texto: "Se impacientan y pican de a uno: fiesta para vos.", fx: { killR: 1 } },
+          ok: [{ texto: "El rival se apura y te regala el ángulo.", fx: {} },
+            { texto: "Esperás y el ángulo cae solo.", fx: {} }],
+          parcial: [{ texto: "Nadie se mueve: se consume tiempo de los dos.", fx: { tiempo: -10 } },
+            { texto: "Standoff eterno: perdés segundos valiosos.", fx: { tiempo: -12 } }],
+          fallo: [{ texto: "Mientras esperás, refuerzan el ángulo el doble.", fx: { alerta: 1 } },
+            { texto: "Tu espera les sirve a ellos para acomodarse.", fx: { alerta: 1 } }],
+          contra: { texto: "Te leen la espera y te flanquean.", fx: { dmgJ: 50 } } } }
     ]
   }
 ];
