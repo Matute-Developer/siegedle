@@ -387,10 +387,10 @@
   }
 
   // Duelo por conocimiento: una pregunta Siege para ganar el 1v1 sin disparar.
-  // En el duelo casual solo salen medio/difícil/experto: tiene que costar.
+  // Nunca salen fáciles (ni en el casual ni en el normal): media/difícil/experto.
   function dueloPregunta(difs) {
     const t = T();
-    const lista = (difs && difs.length ? difs : ["facil", "medio", "dificil"]);
+    const lista = (difs && difs.length ? difs : ["medio", "dificil", "experto"]);
     const q = elegirPregunta(lista[Math.floor(Math.random() * lista.length)]);
     if (!q) return null;
     t.dueloQuizQ = q;
@@ -422,7 +422,17 @@
     const usadas = T().quizzesIds || [];
     const frescas = pool.filter((p) => !usadas.includes(p.id));
     const q = alAzar(frescas.length ? frescas : pool);
-    return { id: q.id, dif: q.dif, q: q.q, op: q.op.slice(), ok: q.ok };
+    return mezclarPregunta(q);
+  }
+
+  // Las opciones se mezclan en cada salida: la correcta nunca queda fija en la A.
+  function mezclarPregunta(q) {
+    const idx = q.op.map((_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) {
+      const k = Math.floor(Math.random() * (i + 1));
+      [idx[i], idx[k]] = [idx[k], idx[i]];
+    }
+    return { id: q.id, dif: q.dif, q: q.q, op: idx.map((i) => q.op[i]), ok: idx.indexOf(q.ok) };
   }
 
   function responderQuiz(idx) {
