@@ -170,7 +170,8 @@
     // Si no queda nada fresco, empieza una época nueva (se resetean los vistos).
     const pool = candidatas();
     if (!pool.length) return null;
-    const prio = pool.filter((s) => s.id.indexOf("clutch") === 0 || s.id === "retake-def" || s.id === "exec-plant");
+    // Prioridad fresca a clutch/retake/ejecución (si ya salió, no roba prioridad).
+    const prio = pool.filter((s) => (s.id.indexOf("clutch") === 0 || s.id === "retake-def" || s.id === "exec-plant") && !t.vistos.includes(s.id));
     const base = prio.length && Math.random() < 0.8 ? prio : pool;
     let frescas = base.filter((s) => !t.vistos.includes(s.id));
     if (!frescas.length) { t.vistos = []; frescas = base; }
