@@ -18,7 +18,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     titulo: () => ["Dron en la ventana", "Ojo electrónico adentro"],
     texto: (ctx) => [`Un dron acaba de colarse por una ventana de ${ctx.sitio}. No sabés quién lo maneja ni qué vio.`,
       `Zumbido en ${ctx.sitio}: entró un dron y está mirando. No sabés cuánto alcanzó a ver.`],
-    quiz: 0.15, quizDif: "facil", avance: [8, 14],
+    quiz: 0.15, quizDif: "medio", avance: [8, 14],
     acciones: [
       { id: "romper", etiqueta: "DESTRUIR EL DRON", sub: "Lo rompés, pero el rival confirma gente en la zona.", riesgo: "medio", base: 0.72, tags: ["intel"],
         mods: [["Jammer o utilidad cerca", 8, (c) => c.tiene("mute") || c.tiene("mozzie")], ["Ya te tienen fichado", -10, (c) => c.alerta >= 2]],
@@ -59,7 +59,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     titulo: () => ["Pasos debajo de la sala", "Alguien abajo, C4 listo"],
     texto: (ctx) => [`Escuchás pasos justo debajo de ${ctx.sitio}. Tenés un C4 preparado en el piso. No sabés si es uno o varios.`,
       `Pisadas bajo ${ctx.sitio} y tu C4 pegado al techo. Pueden ser uno o un grupo entero.`],
-    quiz: 0.2, quizDif: "facil", avance: [6, 12],
+    quiz: 0.2, quizDif: "medio", avance: [6, 12],
     acciones: [
       { id: "detonar", etiqueta: "DETONAR EL C4 AHORA", sub: "Ventana inmediata, pero puede que aún no estén en el radio.", riesgo: "alto", reqRec: "c4", consume: "c4", base: 0.55, tags: ["c4"], estilo: "agresivo",
         mods: [["Los escuchás agrupados", 12, (c) => c.intel >= 2], ["Rival desprevenido", 10, (c) => c.alerta === 0], ["El rival ya te leyó el C4", -18, (c) => c.mem.c4 >= 2], ["Mala sincronización", -8, (c) => c.tiempo < 40]],
@@ -115,7 +115,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     cond: (ctx) => ctx.tiene("kapkan") && ctx.rec("edd") > 0,
     titulo: () => "¡EDD activada!",
     texto: (ctx) => `Escuchás la explosión de una trampa de Kapkan en ${ctx.sitio}. Alguien la pisó.`,
-    quiz: 0.2, quizDif: "facil", avance: [6, 10],
+    quiz: 0.2, quizDif: "medio", avance: [6, 10],
     acciones: [
       { id: "peek", etiqueta: "PEEK APROVECHANDO", sub: "El rival está aturdido, pero puede haber un segundo.", riesgo: "alto", base: 0.6, tags: ["duelo"], estilo: "agresivo",
         mods: [["Trampa confirmada", 10, () => true], ["El rival ya castiga picks", -10, (c) => c.mem.agresivo >= 3]],
@@ -245,7 +245,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     titulo: () => ["IQ está escaneando", "Barrido electrónico"],
     texto: () => ["Escuchás el escáner de IQ barriendo la zona: está buscando tus dispositivos.",
       "El escáner de IQ pasa por tus gadgets: si encuentra algo, lo canta."],
-    quiz: 0.2, quizDif: "facil", avance: [8, 12],
+    quiz: 0.2, quizDif: "medio", avance: [8, 12],
     acciones: [
       { id: "apagar", etiqueta: "APAGAR TODO", sub: "Vigil o Mute la dejan ciega, pero perdés presencia.", riesgo: "medio", reqOp: ["vigil", "mute", "mozzie", "solis"], base: 0.68, tags: ["antigadget"],
         mods: [["Vigil con ERC disponible", 8, (c) => c.tiene("vigil")]],
@@ -286,7 +286,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     titulo: () => ["Hackeo de Dokkaebi", "Teléfonos intervenidos"],
     texto: () => ["Tu teléfono vibra: Dokkaebi hackeó las líneas. Si suena, te ubican.",
       "Llamada entrante hackeada: si atiende alguien, cantan posiciones."],
-    quiz: 0.2, quizDif: "facil", avance: [8, 12],
+    quiz: 0.2, quizDif: "medio", avance: [8, 12],
     acciones: [
       { id: "romper", etiqueta: "ROMPER LOS TELÉFONOS", sub: "Silencio total, pero perdés llamadas de info.", riesgo: "bajo", base: 0.88, tags: ["antigadget"], estilo: "pasivo",
         resulta: {
@@ -540,7 +540,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     titulo: () => ["Fase de drones", "Ojos adentro"],
     texto: (ctx) => [`Entrás con los drones a ${ctx.sitio}. Cada segundo de info vale oro, pero cada dron perdido es un ojo menos.`,
       `Tus drones recorren ${ctx.sitio}. Ubicar a los defensores ahora vale más que cualquier bala.`],
-    quiz: 0.15, quizDif: "facil", avance: [10, 16],
+    quiz: 0.15, quizDif: "medio", avance: [10, 16],
     acciones: [
       { id: "fondo", etiqueta: "DRONAR A FONDO", sub: "Máxima info, pero gastás drones.", riesgo: "bajo", reqRec: "dron", base: 0.8, tags: ["intel"],
         mods: [["Mozzie o Mute del otro lado", -12, (c) => c.rival("mozzie") || c.rival("mute")]],
@@ -604,7 +604,7 @@ window.SIEGE_DLE.situacionesTacticas = [
     cond: (ctx) => ctx.rival("jager"),
     titulo: () => "ADS cubriendo",
     texto: () => "Un ADS de Jäger zumba cubriendo la entrada: tus proyectiles mueren ahí.",
-    quiz: 0.2, quizDif: "facil", avance: [8, 12],
+    quiz: 0.2, quizDif: "medio", avance: [8, 12],
     acciones: [
       { id: "twitch", etiqueta: "ROMPER CON TWITCH", sub: "Dron de descarga, quirúrgico.", riesgo: "medio", reqOp: ["twitch"], consume: "shock", base: 0.7, tags: ["antigadget"],
         mods: [["Mute también cubre", -12, (c) => c.rival("mute")]],
