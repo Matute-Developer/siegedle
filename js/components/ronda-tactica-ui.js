@@ -193,7 +193,9 @@
     detenerQTE();
     detenerDuelo();
     if (pantalla === "resumen" && resumen) { zona.innerHTML = htmlResumen(t); conectarZona(zona); return; }
-    if (pantalla === "resultado" && ultimoResultado) { zona.innerHTML = htmlResultado(); conectarZona(zona); return; }
+    if (pantalla === "resultado" && ultimoResultado) {
+      zona.innerHTML = htmlResultado(); conectarZona(zona); mostrarBannerMuertes(); return;
+    }
     if (t.actual && t.actual.duelo && pantalla === "momento") {
       zona.innerHTML = htmlDuelo(t); conectarZona(zona);
       if (dueloModo === "aim") arrancarDuelo();
@@ -236,6 +238,7 @@
     return `<div class="decision-box tac-momento${t.actual.asalto ? " tac-asalto" : ""}">
       ${t.actual.asalto ? `<div class="tac-asalto-banner">⚠ ¡ASALTO FINAL! MATAR O PLANTAR · SIN VICTORIA PASIVA</div>` : ""}
       <div class="tac-momento-head"><span class="tac-t">${cTiempo}</span><h3>${t.actual.tituloTxt}</h3></div>
+      ${htmlVsRestan(t)}
       <p class="tac-texto">${t.actual.textoTxt}</p>
       ${qteMax ? `<div class="tac-qte" id="tac-qte"><span></span></div>` : ""}
       <div class="tac-acciones">${btns}</div>
@@ -280,15 +283,54 @@
     </div>`;
   }
 
-  // ---------- DUELO 1V1 ----------
+  // Careo: cuando quedan 3 o menos en total, se muestran las fotos de los que se enfrentan.
+  function htmlVsRestan(t) {
+    const vJ = t.equipoJ.filter((u) => u.hp > 0);
+    const vR = t.equipoIA.filter((u) => u.hp > 0);
+    if (vJ.length + vR.length > 3 || vJ.length + vR.length === 0) return "";
+    const foto = (u) => {
+      const op = porId(u.id);
+      return `<span class="tac-vs-mini" title="${u.nombre}">${op ? retrato(op) : "?"}</span>`;
+    };
+    return `<div class="tac-vs-restan" title="Quedan ${vJ.length} vs ${vR.length}">
+      <span class="tac-vs-equipo">${vJ.map(foto).join("")}</span>
+      <span class="tac-vs-mid">VS</span>
+      <span class="tac-vs-equipo">${vR.map(foto).join("")}</span></div>`;
+  }
   // Las fotos de los dos que quedan + dos caminos: minijuego de reflejos o desafío.
   let dueloTimer = null;
   let dueloModo = null; // null: elegir | "aim" | "quiz"
   let dueloQuizQ = null;
+  let bannerTimer = null;
+
+  // Cartel de muerte en el medio de la pantalla: foto en B/N con cruz + nombre.
+  function mostrarBannerMuertes() {
+    const t = Tch().estado();
+    if (!t || !t.nuevasMuertes || !t.nuevasMuertes.length) return;
+    document.querySelectorAll(".tac-banner-muerte").forEach((e) => e.remove());
+    if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+    const capa = document.createElement("div");
+    capa.className = "tac-banner-muerte";
+    capa.innerHTML = t.nuevasMuertes.slice(0, 3).map((m) => {
+      const op = porId(m.id);
+      return `<div class="tac-banner-carta${m.rival ? " rival" : ""}">
+        <span class="tac-muerto">${op ? retrato(op) : "?"}</span>
+        <span class="tac-banner-lado">${m.rival ? "RIVAL ELIMINADO" : "ALIADO CAÍDO"}</span>
+        <strong>☠ ${m.nombre}</strong></div>`;
+    }).join("");
+    (document.getElementById("partida-contenido") || document.body).appendChild(capa);
+    bannerTimer = setTimeout(() => {
+      capa.classList.add("fuera");
+      setTimeout(() => capa.remove(), 500);
+      bannerTimer = null;
+    }, 2300);
+  }
   let dueloQuizRes = null;
 
   function detenerDuelo() {
     if (dueloTimer) { clearInterval(dueloTimer); dueloTimer = null; }
+    if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+    document.querySelectorAll(".tac-banner-muerte").forEach((e) => e.remove());
   }
 
   function htmlDuelo(t) {
