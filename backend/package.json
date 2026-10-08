@@ -1,0 +1,13 @@
+{
+  "name": "siege-dle-backend",
+  "version": "0.6.0",
+  "description": "Backend modular para SIEGE DLE: API + base de datos ligera (SQLite con reserva en JSON). Sin dependencias.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js --port 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

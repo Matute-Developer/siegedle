@@ -1,0 +1,23 @@
+:root {
+  --bg: #0b0e13;
+  --bg2: #10151d;
+  --panel: #141b26;
+  --panel2: #1a2231;
+  --line: #26313f;
+  --line-soft: #1d2634;
+  --text: #eef3f8;
+  --muted: #9aa8bc;
+  --muted2: #6f7f94;
+  --accent: #3dd7ff;
+  --accent-dim: rgba(61, 215, 255, .14);
+  --amber: #ffb020;
+  --green: #35d07f;
+  --red: #ff5d5d;
+  --atac: #3dd7ff;
+  --def: #ffb020;
+  --radius: 14px;
+  --radius-s: 9px;
+  --font-d: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-b: "Inter", system-ui, sans-serif;
+  --shadow: 0 18px 50px rgba(0,0,0,.45);
+}

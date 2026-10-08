@@ -1,0 +1,14 @@
+# Dependencias
+node_modules/
+
+# Archivos de base de datos local y temporales
+backend/siege.db
+*.log
+test-output.txt
+
+# Archivos zip de descarga
+imagenes/*.zip
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
