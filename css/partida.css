@@ -34,21 +34,23 @@ button.sitio-card:hover:not(:disabled) { transform: translateY(-2px); border-col
 .mapa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .85rem; margin-top: 1rem; }
 .mapa-card { display: flex; flex-direction: column; align-items: stretch; gap: 0; background: var(--bg2); border: 1px solid var(--line-soft); border-radius: 12px; padding: 0; cursor: pointer; color: var(--text); font: inherit; text-align: left; transition: transform .15s, border-color .15s, box-shadow .15s; overflow: hidden; }
 button.mapa-card:hover { transform: translateY(-3px); border-color: var(--accent); }
-.mapa-card__thumb { width: 100%; height: 115px; background: #0b0e13; overflow: hidden; position: relative; }
-.mapa-card__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
-button.mapa-card:hover .mapa-card__thumb img { transform: scale(1.05); }
-/* Veto: los 5 en línea recta (uno debajo del otro), foto grande y solo el nombre. */
-.mapa-grid--veto { display: flex; flex-direction: column; gap: .85rem; margin-top: 1rem; }
-.mapa-grid--veto .mapa-card { width: 100%; }
-.mapa-card__thumb--grande { height: 210px; }
-.mapa-card__info--nombre { align-items: center; text-align: center; }
-.mapa-card__info--nombre strong { font-size: 1.25rem; letter-spacing: .06em; }
+/* Veto: los 5 al costado (estilo Siege original), foto completa + nombre en degradado. */
+.mapa-grid--veto { display: grid; grid-template-columns: repeat(5, 1fr); gap: .85rem; margin-top: 1rem; }
+/* Foto a sangre: ocupa toda la tarjeta; el nombre va en degradado transparente. */
+.mapa-card--foto { position: relative; min-height: 320px; }
+.mapa-card--foto .mapa-card__foto { position: absolute; inset: 0; background: #0b0e13; }
+.mapa-card--foto .mapa-card__foto img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
+button.mapa-card--foto:hover .mapa-card__foto img { transform: scale(1.05); }
+.mapa-card__nombre { position: absolute; left: 0; right: 0; bottom: 0; padding: 2.4rem .8rem .7rem;
+  background: linear-gradient(transparent, rgba(0,0,0,.82)); text-align: center; }
+.mapa-card__nombre strong { font-family: var(--font-d); font-size: 1.2rem; letter-spacing: .06em; color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
+.mapa-card--foto.seleccionado .mapa-card__nombre strong { color: var(--accent); }
 @media (max-width: 700px) {
-  .mapa-card__thumb--grande { height: 150px; }
+  .mapa-grid--veto { display: flex; overflow-x: auto; padding-bottom: .4rem; scroll-snap-type: x mandatory; }
+  .mapa-grid--veto .mapa-card--foto { flex: 0 0 240px; scroll-snap-align: start; }
+  .mapa-card--foto { min-height: 260px; }
 }
-.mapa-card__info { display: flex; flex-direction: column; gap: .35rem; padding: .8rem .95rem; flex: 1; }
 .mapa-card strong { font-family: var(--font-d); font-size: 1.05rem; letter-spacing: .04em; line-height: 1.3; }
-.mapa-desc { font-size: .82rem; color: var(--muted); line-height: 1.45; }
 .mapa-card.seleccionado { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), 0 0 18px rgba(61,215,255,.35); transform: translateY(-2px); animation: sorteo-luz .3s ease-out; }
 .mapa-card.seleccionado .sitio-sello { color: var(--accent); border-color: var(--accent); }
 .mapa-card--sorteo { cursor: default; }

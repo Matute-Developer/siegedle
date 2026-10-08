@@ -87,6 +87,7 @@
 .tac-stats strong { font-size: .95rem; }
 .tac-mejor { font-size: .85rem; color: var(--muted); margin: .2rem 0; }
 .tac-mejor strong { color: var(--text); }
+.tac-motivo { font-size: .85rem; color: var(--muted); font-style: italic; margin: 0 0 .4rem; }
 
 @media (max-width: 850px) {
   .tac-grid { grid-template-columns: 1fr; }
