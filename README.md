@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.22.0 (adivinanza + modo Partida con 16 mapas reales, imágenes oficiales, veto con reroll y volver, punto de bomba con mapa visible + fichas con retrato)
+# SIEGE DLE — v0.24.0 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -32,13 +32,15 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
 ## Modo Partida (TÚ vs RIVAL, primero en 4)
 - **Pantalla de inicio**: el modo no arranca en los mapas. El cartel de arriba dice
   **«JUGATE UNA RANKED NACHO»** (modo meme) y abajo *«como diria un amigo BALRIGHT»*; en el
-  contenido hay tres botones: **JUGAR** (arranca el veto), **Ver mapas** (los 16 mapas con sus
-  imágenes, puntos de bomba y arranques) y **Cómo se juega**.
+  contenido hay tres botones: **JUGAR** (arranca el veto), **Ver mapas** (los 16 mapas con
+  foto en grande y nombre, sin info) y **Cómo se juega**.
 - **Veto + sorteo de mapa**: salen **5 mapas al azar** con sus imágenes reales (`imagenes/mapas/`).
-  Adentro tenés la opción de **Regresar y no jugar** (volver al inicio sin penalización) y
+  En el veto los 5 van **en línea recta** (uno debajo del otro), con la **foto en grande y solo
+  el nombre**, sin data. Adentro tenés la opción de **Regresar y no jugar** (volver al inicio sin penalización) y
   de **Randomizar mapas de nuevo 1 sola vez** si querés otra combinación de 5 mapas candidatos.
   Vos baneás 1 y el rival banea 1 distinto; entre los **3 restantes el mapa sale totalmente al azar**, con una
   ruleta que se ve girar en pantalla (`#btn-sortear`, `vistaSorteo()`).
+  **Un mapa por partida**: una vez sorteado el mapa queda fijo y no se puede cambiar en toda la partida.
 - Los 16 mapas con imágenes oficiales y sus **4 puntos de bomba** y **puntos de arranque** (`js/data/puntos-ataque.js`):
   Banco, Frontera, Chalet, Club, Litoral, Consulado, Café Dostoyevsky, Guarida, Laboratorios de Nighthaven,
   Rascacielos, Parque de Atracciones, Villa, Oregón, Canal, Outback y Llanuras Esmeralda.
@@ -56,9 +58,34 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
   entry, fragger, roamer, anchor, denial, support, plant), eligiendo especialistas y con variedad;
   sin eje, 3 rutas de composición distintas (cubrir hueco, encaje del lado, apuesta). Las
   categorías **nunca se muestran**; en las fichas solo aparece el rol real del operador.
-- IA con 4 estilos (agresivo, defensivo, inteligencia, equilibrado), equipo de 5 auto que
-  también cubre huecos y busca sinergia, pero con ruido para no ser perfecta.
+- IA con 4 estilos (agresivo, defensivo, inteligencia, equilibrado) y **memoria entre rondas**:
+  si abusás del C4 temprano, drona y espera; si sos agresivo, castiga tus picks; si sos pasivo,
+  toma terreno. Su plan (ritmo, dronaje) se anuncia al arrancar la ronda.
 - Rondas 1-3 de un lado y 4-6 del otro, alternando quién empieza entre partidas.
+- **Ronda táctica interactiva** (motor `js/logic/ronda-tactica.js`, situaciones en
+  `js/data/tactica-situaciones.js`, preguntas en `js/data/tactica-preguntas.js`):
+  línea temporal por momentos con reloj (2:45), situaciones reales con operadores de tu
+  draft (pasos bajo la sala con C4, carga de Thermite en la pared, hackeo de Dokkaebi,
+  escáner de IQ, plant con segundos en el reloj) y 2-4 acciones con trade-offs visibles
+  (riesgo, recompensa, requisitos de operador/recurso/tiempo).
+- Las acciones tienen **condiciones reales**: sin C4 no hay C4, sin Bandit/Kaid no hay trick,
+  sin tiempo no hay espera. Los botones imposibles se deshabilitan con el motivo.
+- **Probabilidades con modificadores explicados** (posición, agrupamiento, info, sincronía,
+  sinergias como Thatcher+Thermite, counters como IQ vs C4 o Warden vs humo): nivel
+  MUY BAJA→MUY ALTA siempre, % con desglose solo en momentos clave. Todo puede fallar;
+  nada está garantizado.
+- **Cadenas y QTE**: esperar puede abrir una ventana de 1 segundo (DETONAR o nada) con
+  cuenta regresiva; si no respondés, se elige lo más seguro. Pausa real congela el QTE.
+- **Información oculta**: del rival solo ves cantidad en pie; posiciones y HP se deducen
+  con cámaras, sonido e intel (panel de datos confirmados + nivel y alerta rival).
+- **Utilidad consumible** (gas de Smoke, EDD, ADS, baterías, PEM, drones…) y **HP por
+  operador** con estados; gastar todo temprano se paga en el plant. Killfeed en vivo.
+- **Quiz de conocimiento Siege** en momentos importantes (país de Kapkan, Yokai de Echo,
+  Evil Eye, Sala del Aviador, trick Bandit+Kaid…): acertar da +info y +5% en la próxima
+  acción; fallar cuesta 12 s y alerta al rival. Dificultad facil→experto, máx. 2 por ronda.
+- **Plant/retake, clutch 1vX** con interfaz especial, condiciones de victoria por
+  eliminación/tiempo/plant, y **resumen de ronda** con bajas, daño, utilidad usada y
+  malgastada, plant, clutch, mejor y peor decisión.
 - La **composición se evalúa y se puede equivocar**: cada rasgo tiene un objetivo por lado,
   llegar a él suma, amontonar todo en una sola cosa deja de sumar y quedarse corto resta
   (huecos, cobertura, sinergia y, en ataque, falta de apertura dura). Nada está escrito:
@@ -66,12 +93,7 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
   composición mala perjudica pero nunca regala la derrota, ni una buena regala la victoria.
   (Pruebas: draft con criterio ≈ 55 % por ronda y ≈ 68 % de partidas; al azar ≈ 44 % y ≈ 57 %;
   malo a propósito ≈ 27 % y ≈ 18 %. Ninguna queda en 0 % ni en 100 %.)
-- Panel de pronóstico en vivo: probabilidad de ronda y de partida, fuerzas y ventaja,
-  con barras animadas que cambian con cada decisión y cada resultado. Sinergia, cobertura
-  y categorías siguen ocultas en el motor.
-- 2 decisiones variadas por ronda (6 opciones por lado, rotan). Si el plan entra en lo que tu
-  equipo sabe hacer, ayuda; si forzás un plan que tu composición no sostiene, perjudica
-  (incluso resta). Nunca es decisiva por sí sola.
+- Panel de pronóstico en vivo antes de cada ronda: probabilidad, fuerzas y ventaja.
 
 ## Arranque con backend (Windows)
 ```
@@ -91,6 +113,11 @@ js/
   data/operators.js         -> RESERVA local (el backend es la fuente principal)
   data/mapas.js             -> mapas, puntos y bonus (fácil agregar más)
   data/puntos-ataque.js     -> puntos de arranque de los atacantes por mapa
+  data/tactica-preguntas.js -> desafíos de conocimiento Siege (fácil→experto)
+  data/tactica-situaciones.js -> momentos tácticos con acciones y consecuencias
+  logic/ronda-tactica.js    -> motor táctico: momentos, probs, HP, plant, clutch, quiz
+  components/ronda-tactica-ui.js -> vista de la ronda (timeline, intel, QTE, resumen)
+  css/tactica.css            -> estilos de la ronda táctica
   services/api.js           -> único que habla con /api/*, con reserva automática
   logic/game-state.js       -> estado de la adivinanza
   logic/rasgos.js           -> 12 rasgos + familias, afinidades y mínimos por lado (ocultos)
