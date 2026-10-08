@@ -43,7 +43,7 @@
   };
 
   const TIEMPO_INICIAL = 165; // 2:45 de ronda
-  const MAX_MOMENTOS = 12;
+  const MAX_MOMENTOS = 6; // rondas cortas: 6 momentos de decisión como máximo, después duelo final
   const MAX_QUIZ = 2;
 
   function P() { return window.SIEGE_DLE.partida; }
@@ -116,7 +116,7 @@
       alerta: 0, plantado: false,
       plan: planRival(),
       actual: null, quiz: null, quizzes: 0, bonoQuiz: 0,
-      usadas: [], cadena: null,
+      usos: {}, vistos: [], cadena: null,
       feed: [], muertes: [],
       timeline: [{ t: formatoReloj(TIEMPO_INICIAL), texto: `Fase de preparación en ${st.mapa.nombre} — ${st.sitio}.`, tipo: "mapa" }],
       stats: { bajasJ: 0, bajasR: 0, danio: 0, util: 0, utilMal: 0, decisiones: [], clutch: false, plant: false },
@@ -161,39 +161,55 @@
 
   function elegirSituacion() {
     const t = T();
-    const c = ctx();
     if (t.cadena) {
       const s = (window.SIEGE_DLE.situacionesTacticas || []).find((x) => x.id === t.cadena);
       t.cadena = null;
       if (s) return s;
     }
-    // Clutch y retake/plant tienen prioridad.
+    // Rotación por épocas: nadie se repite hasta que TODO lo elegible ya salió.
+    // Si no queda nada fresco, empieza una época nueva (se resetean los vistos).
     const pool = candidatas();
     if (!pool.length) return null;
     const prio = pool.filter((s) => s.id.indexOf("clutch") === 0 || s.id === "retake-def" || s.id === "exec-plant");
     const base = prio.length && Math.random() < 0.8 ? prio : pool;
-    const frescas = base.filter((s) => !t.usadas.includes(s.id));
-    const elegibles = frescas.length ? frescas : base;
-    const total = elegibles.reduce((s, x) => s + (x.peso || 1), 0);
+    let frescas = base.filter((s) => !t.vistos.includes(s.id));
+    if (!frescas.length) { t.vistos = []; frescas = base; }
+    const pesos = frescas.map((s) => (s.peso || 1) / ((t.usos[s.id] || 0) + 1));
+    const total = pesos.reduce((s, x) => s + x, 0);
     let r = Math.random() * total;
-    for (const s of elegibles) { r -= (s.peso || 1); if (r <= 0) return s; }
-    return elegibles[elegibles.length - 1];
+    for (let i = 0; i < frescas.length; i++) {
+      r -= pesos[i];
+      if (r <= 0) return frescas[i];
+    }
+    return frescas[frescas.length - 1];
   }
 
   function momento() {
     const t = T();
     if (t.terminado) return null;
     const sit = elegirSituacion();
-    if (!sit) { muerteSubita(); return null; }
+    if (!sit) { dueloFinal(); return null; }
     const c = ctx();
     const av = sit.avance || [8, 14];
     t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])));
     t.n += 1;
-    t.usadas.push(sit.id);
+    t.usos[sit.id] = (t.usos[sit.id] || 0) + 1;
+    if (!t.vistos.includes(sit.id)) t.vistos.push(sit.id);
     const accs = sit.acciones.filter((a) => accionDisponible(a, c, false));
+    // Orden mezclado + textos alternos: la misma situación no se ve igual dos veces.
+    for (let i = accs.length - 1; i > 0; i--) {
+      const k = Math.floor(Math.random() * (i + 1));
+      [accs[i], accs[k]] = [accs[k], accs[i]];
+    }
     const defecto = [...accs].sort((a, b) => riesgoNum(a.riesgo) - riesgoNum(b.riesgo))[0];
-    t.actual = { sit, accs, defectoId: defecto ? defecto.id : null };
-    pushTimeline(sit.titulo(c), "momento");
+    const tit = sit.titulo(c);
+    const tex = sit.texto(c);
+    t.actual = {
+      sit, accs, defectoId: defecto ? defecto.id : null,
+      tituloTxt: Array.isArray(tit) ? alAzar(tit) : tit,
+      textoTxt: Array.isArray(tex) ? alAzar(tex) : tex
+    };
+    pushTimeline(t.actual.tituloTxt, "momento");
     // Quiz solo en momentos importantes y con cupo.
     t.quiz = null;
     if (sit.quiz && t.quizzes < MAX_QUIZ && Math.random() < sit.quiz) {
@@ -278,7 +294,7 @@
     for (const [txt, pts] of sinergiaCounters(acc, c)) { p += pts / 100; desglose.push([txt, pts]); }
     if (T().bonoQuiz) { p += T().bonoQuiz; desglose.push(["Bonus de conocimiento", 5]); }
     p = Math.min(0.95, Math.max(0.05, p));
-    return { p, desglose };
+    return { p, nivel: nivelProb(p), desglose };
   }
 
   // ---------- resolución ----------
@@ -323,9 +339,10 @@
   function rellenar(texto) {
     const t = T();
     const st = ST();
+    const base = Array.isArray(texto) ? alAzar(texto) : texto;
     const r = unidadViva(t.equipoIA);
     const a = unidadViva(t.equipoJ);
-    return texto
+    return base
       .replace(/\{rival\}/g, r ? r.nombre : "un rival")
       .replace(/\{aliado\}/g, a ? a.nombre : "tu equipo")
       .replace(/\{sitio\}/g, st.sitio || "")
@@ -357,7 +374,8 @@
     else if (r >= p + 0.45 && acc.resulta.contra) tier = "contra";
     else tier = "fallo";
     const res = acc.resulta[tier] || acc.resulta.fallo;
-    aplicarFx(res.fx, acc);
+    const variante = Array.isArray(res) ? alAzar(res) : res;
+    aplicarFx(variante.fx, acc);
     if (acc.consume && (tier === "fallo" || tier === "contra")) t.stats.utilMal += 1;
     // Memoria del rival: aprende tus hábitos.
     const mem = ST().memoria;
@@ -367,41 +385,60 @@
     const buena = tier === "crit" || tier === "ok";
     t.stats.decisiones.push({ etiqueta: acc.etiqueta, buena });
     if (vivos(t.equipoJ) === 1 && vivos(t.equipoIA) > 1) t.stats.clutch = true;
-    pushTimeline(rellenar(res.texto), buena ? "ok" : "mal");
+    const textoFinal = rellenar(variante.texto);
+    pushTimeline(textoFinal, buena ? "ok" : "mal");
     t.bonoQuiz = 0;
     if (acc.cadena) t.cadena = acc.cadena;
     const fin = chequearFin();
-    if (!fin && t.n >= MAX_MOMENTOS) muerteSubita();
-    return { tier, p, nivel: nivelProb(p), desglose: acc.verProb ? desglose : [], texto: rellenar(res.texto), fin: t.terminado };
+    if (!fin && t.n >= MAX_MOMENTOS) dueloFinal();
+    return { tier, p, nivel: nivelProb(p), desglose: acc.verProb ? desglose : [], texto: textoFinal, fin: t.terminado };
   }
 
   function chequearFin() {
     const t = T();
     if (t.terminado) return true;
     const vJ = vivos(t.equipoJ), vR = vivos(t.equipoIA);
-    if (vR === 0) return terminar(true);
-    if (vJ === 0) return terminar(false);
+    if (vR === 0) return terminar(true, "eliminacion");
+    if (vJ === 0) return terminar(false, "eliminacion");
     if (t.tiempo <= 0) {
       // Sin tiempo: si hay plant, gana el ataque; si no, la defensa.
       const atacaJ = t.lado === "ataque";
-      if (t.plantado) return terminar(atacaJ);
-      return terminar(!atacaJ);
+      if (t.plantado) return terminar(atacaJ, "plant");
+      return terminar(!atacaJ, "tiempo");
     }
     return false;
   }
 
-  function muerteSubita() {
+  // Duelo final: cuando no quedan momentos (o no hay situaciones válidas), la ronda se
+  // define a balas con daño y bajas reales, nunca con moneda al aire.
+  function dueloFinal() {
     const t = T();
     if (t.terminado) return;
+    pushTimeline("Se acaba el margen para jugar fino: todo se define a balas en el sitio.", "exec");
+    let choques = 0;
+    while (vivos(t.equipoJ) > 0 && vivos(t.equipoIA) > 0 && choques < 4) {
+      choques += 1;
+      const bj = aplicarDmg(t.equipoIA, 25 + Math.floor(Math.random() * 40), true);
+      const br = vivos(t.equipoJ) > 0 ? aplicarDmg(t.equipoJ, 25 + Math.floor(Math.random() * 40), false) : null;
+      const partes = [];
+      if (bj && bj.muerto) partes.push(`cae ${bj.muerto.nombre} (rival)`);
+      if (br && br.muerto) partes.push(`cae ${br.muerto.nombre} (tuyo)`);
+      pushTimeline(partes.length ? `Intercambio ${choques}: ${partes.join(" y ")}.` : `Intercambio ${choques}: puro daño, nadie cae.`, partes.length ? "ok" : "mal");
+    }
     const vJ = vivos(t.equipoJ), vR = vivos(t.equipoIA);
-    const fJ = vJ * 10 + t.intel * 4 + (t.plantado && t.lado === "ataque" ? 15 : 0);
-    const fR = vR * 10 + t.alerta * 3;
-    const p = Math.min(0.9, Math.max(0.1, 0.5 + (fJ - fR) * 0.02));
-    pushTimeline("Intercambio final en el sitio: todo se define ahora.", "exec");
-    terminar(Math.random() < p);
+    let ganada;
+    if (vR === 0) ganada = true;
+    else if (vJ === 0) ganada = false;
+    else if (vJ !== vR) ganada = vJ > vR;
+    else {
+      const hpJ = t.equipoJ.reduce((s, u) => s + u.hp, 0);
+      const hpR = t.equipoIA.reduce((s, u) => s + u.hp, 0);
+      ganada = hpJ === hpR ? Math.random() < 0.5 : hpJ > hpR;
+    }
+    terminar(ganada, "duelo");
   }
 
-  function terminar(ganada) {
+  function terminar(ganada, motivo) {
     const t = T();
     if (t.terminado) return true;
     if (ganada === undefined) {
@@ -410,6 +447,8 @@
     }
     t.terminado = true;
     t.ganada = !!ganada;
+    t.motivo = motivo || "eliminacion";
+    t.stats.motivo = t.motivo;
     // Mejor y peor decisión de la ronda.
     const ds = t.stats.decisiones;
     t.stats.mejor = ds.length ? ds.reduce((a, b) => (b.buena && !a.buena ? b : a)).etiqueta : "—";
