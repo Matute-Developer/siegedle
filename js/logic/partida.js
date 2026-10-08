@@ -25,6 +25,8 @@
     fase: "inicio", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [], spawn: null,
     mapasCandidatos: [], vetoMapaJ: null, vetoMapaRival: null, rerollMapasUsado: false,
     estiloIA: "equilibrado", empieza: "ataque",
+    memoria: { c4: 0, agresivo: 0, pasivo: 0 }, // lo que el rival aprendió de vos en la partida
+    tactica: null, // estado de la ronda táctica en curso (motor ronda-tactica.js)
     vetados: [],
     equipoJ: [], equipoIA: [], opciones: [],
     rondas: [], puntosJ: 0, puntosIA: 0, rondaNum: 0, ronda: null
@@ -83,8 +85,9 @@
     return state.vetoMapaRival;
   }
 
-  // El jugador elige con qué mapa de los que quedaron en pie se juega la partida.
+  // El mapa sorteado queda fijo para toda la partida: un mapa por partida, no se puede cambiar.
   function elegirMapa(id) {
+    if (state.mapa) return false;
     if (!mapasDisponibles().includes(id)) return false;
     const mapa = mapaPorId(id);
     if (!mapa) return false;
@@ -171,6 +174,8 @@
     state.sitio = null; state.sitioIdx = null; state.sitiosGanados = [];
     state.spawn = null;
     state.vetados = [];
+    state.memoria = { c4: 0, agresivo: 0, pasivo: 0 };
+    state.tactica = null;
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
     state.rondas = []; state.puntosJ = 0; state.puntosIA = 0; state.rondaNum = 0; state.ronda = null;
   }
@@ -391,87 +396,16 @@
     state.equipoIA = elegidos;
   }
 
-  // ---------- RONDAS ----------
-  function topRasgo(ids, rasgo) {
-    let mejor = null; let val = -1;
-    ids.forEach((id) => {
-      const op = porId(id);
-      if (!op) return;
-      const v = window.SIEGE_DLE.rasgos.rasgosDe(op)[rasgo] || 0;
-      if (v > val) { val = v; mejor = op; }
-    });
-    return val > 0 ? mejor : null;
-  }
-
-  const DECISIONES = {
-    ataque: [
-      { clave: "A", titulo: "Entrada explosiva", desc: "Reventar todo y entrar sin pedir permiso.", rasgos: ["entry", "frag"] },
-      { clave: "B", titulo: "Juego metódico", desc: "Dron, info y apertura quirúrgica.", rasgos: ["intel", "breach"] },
-      { clave: "C", titulo: "Presión dividida", desc: "Atacar por tres lados a la vez.", rasgos: ["flank", "support"] },
-      { clave: "D", titulo: "Lluvia desde arriba", desc: "Abrir techo y llover plomo.", rasgos: ["vertical", "breach"] },
-      { clave: "E", titulo: "Caza de roamers", desc: "Limpiar el mapa antes del sitio.", rasgos: ["intel", "roam"] },
-      { clave: "F", titulo: "Al plant directo", desc: "Humo, escudo y a plantar.", rasgos: ["plant", "support"] }
-    ],
-    defensa: [
-      { clave: "A", titulo: "Aguantar el sitio", desc: "Ni un paso atrás.", rasgos: ["anchor", "denial"] },
-      { clave: "B", titulo: "Jugar al retake", desc: "Ceder el sitio y recuperarlo.", rasgos: ["roam", "intel"] },
-      { clave: "C", titulo: "Cazar al rival", desc: "Salir a buscar cada duelo.", rasgos: ["frag", "entry"] },
-      { clave: "D", titulo: "Apagarles los ojos", desc: "Cegar drones y cámaras.", rasgos: ["antigadget", "intel"] },
-      { clave: "E", titulo: "Nido de trampas", desc: "Que cada paso duela.", rasgos: ["denial", "flank"] },
-      { clave: "F", titulo: "Presión temprana", desc: "Pelear los primeros 30 segundos.", rasgos: ["roam", "frag"] }
-    ]
-  };
-
-  const CONFIRMACIONES = [
-    "Decidís: {t}. Tu equipo juega a su fortaleza.",
-    "Orden dada: {t}. A ver si sale.",
-    "Vas con {t}. Sin miedo al éxito."
-  ];
-
-  function construirEventos() {
-    const lado = state.ronda.lado;
-    const atk = lado === "ataque";
-    const J = state.equipoJ; const R = state.equipoIA;
-    const evs = [];
-    evs.push({ tipo: "mapa", texto: `Fase de preparación en ${state.mapa.nombre} — ${state.sitio}.` });
-    evs.push({ tipo: "prep", texto: atk ? "Tu equipo prepara la entrada al sitio." : "Tu equipo refuerza el sitio y esconde trampas." });
-    const intelJ = topRasgo(J, "intel");
-    const intelR = topRasgo(R, "intel");
-    if (intelJ) evs.push({ tipo: "intel", texto: `${intelJ.nombre} consigue información clave del rival.` });
-    if (intelR) evs.push({ tipo: "rival", texto: `${intelR.nombre} detecta movimientos de tu equipo.` });
-    evs.push({ decision: 0 });
-    const antiJ = topRasgo(J, "antigadget");
-    if (antiJ && atk) evs.push({ tipo: "clash", texto: `${antiJ.nombre} desactiva dispositivos electrónicos.` });
-    if (atk) {
-      const br = topRasgo(J, "breach");
-      const den = window.SIEGE_DLE.rasgos.equipoStats(R).rasgos.denial;
-      if (br && den >= 5) evs.push({ tipo: "clash", texto: `${br.nombre} forcejea con un muro muy defendido.` });
-      else if (br) evs.push({ tipo: "clash", texto: `${br.nombre} consigue abrir el muro reforzado.` });
-      else evs.push({ tipo: "rival", texto: "Sin apertura clara, tu equipo busca otra vía." });
-    } else {
-      const den = topRasgo(J, "denial");
-      if (den) evs.push({ tipo: "clash", texto: `${den.nombre} frena el avance rival con utilidades.` });
-      const roam = topRasgo(J, "roam");
-      if (roam) evs.push({ tipo: "intel", texto: `${roam.nombre} acecha desde fuera del sitio.` });
-    }
-    const fragJ = topRasgo(J, atk ? "entry" : "frag");
-    const fragR = topRasgo(R, atk ? "frag" : "entry");
-    if (fragJ && fragR) evs.push({ tipo: "duelo", texto: `Duelo clave: ${fragJ.nombre} contra ${fragR.nombre}.` });
-    else if (fragJ) evs.push({ tipo: "duelo", texto: `${fragJ.nombre} toma espacio con confianza.` });
-    evs.push({ decision: 1 });
-    evs.push({ tipo: "exec", texto: "COMIENZA LA EJECUCIÓN" });
-    return evs;
-  }
+  // ---------- RONDAS TÁCTICAS ----------
+  // La simulación vive en el motor táctico (ronda-tactica.js): momentos, acciones con
+  // condiciones, probabilidades con modificadores, utilidad, HP, plant, clutch y quiz.
 
   function iniciarRonda() {
     state.rondaNum += 1;
     const lado = ladoDeRonda(state.rondaNum);
     const calc = fuerzasDeRonda(lado);
-    state.ronda = {
-      lado, fuerzaJ: calc.fJ, fuerzaIA: calc.fI, prob: calc.prob, bono: 0,
-      usadas: [], resultado: null, eventos: []
-    };
-    state.ronda.eventos = construirEventos();
+    state.ronda = { lado, fuerzaJ: calc.fJ, fuerzaIA: calc.fI, resultado: null };
+    window.SIEGE_DLE.tactica.iniciar();
     state.fase = "ronda";
   }
 
@@ -526,25 +460,9 @@
     return Math.min(0.99, Math.max(0.01, s));
   }
 
-  function aplicarDecision(clave) {
-    const ronda = state.ronda;
-    if (ronda.usadas.includes(clave)) return "Esa opción ya se usó.";
-    const def = DECISIONES[ronda.lado].find((d) => d.clave === clave);
-    if (!def) return "Opción no válida.";
-    ronda.usadas.push(def.clave);
-    const st = window.SIEGE_DLE.rasgos.equipoStats(state.equipoJ).rasgos;
-    const suma = def.rasgos.reduce((s, t) => s + (st[t] || 0), 0);
-    // Jugar a la fortaleza del equipo ayuda; forzar un plan que tu composición no sostiene,
-    // perjudica. Nunca es decisivo por sí solo: sigue habiendo suerte.
-    const bono = suma >= 7 ? 5 : suma >= 4 ? 2 : suma >= 2 ? 0 : -3;
-    ronda.bono += bono;
-    return alAzar(CONFIRMACIONES).replace("{t}", def.titulo);
-  }
-
-  function resolverRonda() {
-    const prob = probActual();
-    state.ronda.prob = prob;
-    const ganada = Math.random() < prob;
+  // Cierra la ronda con el resultado del motor táctico (sin moneda al aire: la ronda ya
+  // se jugó momento a momento). Puntúa, bloquea el punto ganado y guarda el historial.
+  function cerrarRondaTactica(ganada, stats) {
     state.ronda.resultado = ganada ? "victoria" : "derrota";
     if (ganada) {
       state.puntosJ += 1;
@@ -557,11 +475,12 @@
     }
     state.rondas.push({
       num: state.rondaNum, lado: state.ronda.lado,
-      resultado: state.ronda.resultado, sitio: state.sitio, spawn: state.spawn
+      resultado: state.ronda.resultado, sitio: state.sitio, spawn: state.spawn,
+      stats: stats || null
     });
     const fin = state.puntosJ >= 4 || state.puntosIA >= 4;
     if (fin) state.fase = "fin";
-    return { ganada, prob, fin, sitio: state.sitio, spawn: state.spawn, puntoBloqueado: ganada };
+    return { ganada, fin, sitio: state.sitio, spawn: state.spawn, puntoBloqueado: ganada };
   }
 
   function prepararRonda() {
@@ -573,9 +492,9 @@
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
   window.SIEGE_DLE.partida = {
-    state, ESTILOS, DECISIONES, nuevoPartido, candidatosBan, motivoBan, nombre,
+    state, ESTILOS, nuevoPartido, candidatosBan, motivoBan, nombre,
     banRival, ladoProximo, ladoRival, bandoDeLado,
-    opcionesDraft, generarEquipoIA, iniciarRonda, aplicarDecision, resolverRonda,
+    opcionesDraft, generarEquipoIA, iniciarRonda, cerrarRondaTactica,
     ladoDeRonda, prepararRonda, pronostico, probActual, probPartido,
     sitiosDisponibles, sitioBloqueado, elegirSitioJ, elegirSitioIA,
     mapaPorId, prepararMapas, randomizarMapas, mapaVetado, mapasDisponibles, vetoMapaJ, vetoMapaRival, elegirMapa,
