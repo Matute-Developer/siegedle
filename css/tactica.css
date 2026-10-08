@@ -102,6 +102,13 @@
 .tac-res.tier-fallo { border-color: var(--red); }
 .tac-res.tier-contra { border-color: var(--red); box-shadow: 0 0 22px rgba(255,93,93,.3); }
 
+/* Asalto final: matar o plantar, sin victoria pasiva. */
+.tac-asalto { border-color: var(--red); }
+.tac-asalto-banner { font-family: var(--font-d); letter-spacing: .1em; text-align: center; color: #fff;
+  background: linear-gradient(90deg, rgba(255,93,93,.35), rgba(255,176,32,.35));
+  border: 1px solid var(--red); border-radius: 10px; padding: .45rem; margin-bottom: .6rem;
+  animation: pulse 1.2s infinite; }
+
 .tac-resumen.ok { border-color: var(--green); }
 .tac-resumen.bad { border-color: var(--red); }
 .tac-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: .8rem 0; }
