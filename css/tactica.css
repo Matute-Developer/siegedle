@@ -34,6 +34,26 @@
 .tac-aim-zona { position: absolute; top: 0; bottom: 0; background: rgba(53,208,127,.45); border-left: 1px solid var(--green); border-right: 1px solid var(--green); }
 .tac-aim-cursor { position: absolute; top: -2px; bottom: -2px; width: 4px; background: #fff; box-shadow: 0 0 8px #fff; }
 
+/* Careo cuando quedan 3 o menos: fotos de los que se enfrentan. */
+.tac-vs-restan { display: flex; align-items: center; justify-content: center; gap: .8rem; background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: .4rem .6rem; margin-bottom: .6rem; }
+.tac-vs-equipo { display: flex; gap: .3rem; }
+.tac-vs-mini .retrato { width: 30px; height: 30px; border-width: 2px; }
+.tac-vs-restan .tac-vs-mid { font-size: 1rem; }
+
+/* Cartel de muerte en el medio de la pantalla. */
+.tac-banner-muerte { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 90; display: flex; gap: .8rem; animation: banner-pop .35s ease-out; }
+.tac-banner-muerte.fuera { opacity: 0; transition: opacity .5s; }
+.tac-banner-carta { display: flex; flex-direction: column; align-items: center; gap: .3rem; background: rgba(10,14,20,.94); border: 2px solid var(--green); border-radius: 14px; padding: 1rem 1.4rem; box-shadow: 0 0 40px rgba(0,0,0,.7); }
+.tac-banner-carta.rival { border-color: var(--red); }
+.tac-banner-carta .tac-muerto .retrato { width: 84px; height: 84px; border-width: 3px; }
+.tac-banner-carta .tac-muerto::after { font-size: 2.6rem; }
+.tac-banner-lado { font-size: .66rem; letter-spacing: .16em; font-weight: 700; color: var(--muted); }
+.tac-banner-carta strong { font-family: var(--font-d); font-size: 1.35rem; letter-spacing: .05em; }
+@keyframes banner-pop {
+  from { transform: translate(-50%,-50%) scale(.7); opacity: 0; }
+  to { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+}
+
 .tac-panel { background: var(--bg2); border: 1px solid var(--line-soft); border-radius: 12px; padding: .7rem .9rem; }
 .tac-panel h4 { font-family: var(--font-d); letter-spacing: .14em; font-size: .8rem; color: var(--muted); margin: 0 0 .5rem; }
 .tac-panel h4:not(:first-child) { margin-top: .8rem; }
