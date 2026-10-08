@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.24.7 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
+# SIEGE DLE — v0.24.8 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -94,6 +94,11 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
   enfrentan y elegís cómo ganarlo: **minijuego de reflejos** (zona verde, 8 segundos) o
   **desafío Siege** (acertar elimina, fallar duele 35 HP). Fallar el duelo duele y se repite
   hasta que alguien caiga.
+- **Cartel de muerte en el medio de la pantalla**: cada baja (aliada o rival) muestra
+  2 segundos el retrato grande en blanco y negro con cruz roja + nombre ("RIVAL ELIMINADO"
+  / "ALIADO CAÍDO"), además del killfeed.
+- **Careo siempre visible**: cuando quedan 3 o menos en total aparecen las fotos de los
+  que se enfrentan (los tuyos VS los rivales); en el 1v1 exacto se abre el duelo jugable.
 - **Quiz de conocimiento Siege** en momentos importantes (país de Kapkan, Yokai de Echo,
   Evil Eye, Sala del Aviador, trick Bandit+Kaid…): acertar da +info y +5% en la próxima
   acción; fallar cuesta 12 s y alerta al rival. Dificultad facil→experto, máx. 2 por ronda.
