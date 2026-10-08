@@ -115,7 +115,7 @@
       intel: 0, intelLista: [], intelProb: [],
       alerta: 0, plantado: false,
       plan: planRival(),
-      actual: null, quiz: null, quizzes: 0, bonoQuiz: 0,
+      actual: null, quiz: null, quizzes: 0, bonoQuiz: 0, duelo1v1: false,
       usos: {}, vistos: [], cadena: null,
       feed: [], muertes: [],
       timeline: [{ t: formatoReloj(TIEMPO_INICIAL), texto: `Fase de preparación en ${st.mapa.nombre} — ${st.sitio}.`, tipo: "mapa" }],
@@ -188,6 +188,10 @@
   function momento() {
     const t = T();
     if (t.terminado) return null;
+    // 1 VS 1: se interrumpe lo normal y se juega el duelo hasta ganarlo (o caer).
+    if (vivos(t.equipoJ) === 1 && vivos(t.equipoIA) === 1 && !t.duelo1v1) {
+      return momentoDuelo();
+    }
     const sit = elegirSituacion();
     if (!sit) { dueloFinal(); return null; }
     const c = ctx();
@@ -221,6 +225,54 @@
   }
 
   function riesgoNum(r) { return r === "bajo" ? 0 : r === "medio" ? 1 : 2; }
+
+  // Duelo 1v1: las fotos de los dos que quedan y un minijuego de reflejos que hay
+  // que ganar. Si fallás y sobrevivís, el duelo se repite hasta que alguien caiga.
+  function momentoDuelo() {
+    const t = T();
+    const av = [4, 7];
+    t.tiempo = Math.max(0, t.tiempo - (av[0] + Math.random() * (av[1] - av[0])));
+    t.n += 1;
+    t.actual = {
+      duelo: true,
+      sit: { id: "duelo-1v1", titulo: () => "DUELO 1 VS 1", texto: () => "Solo quedan ustedes dos en el mapa." },
+      accs: [], defectoId: null, tituloTxt: "DUELO 1 VS 1", textoTxt: "Solo quedan ustedes dos en el mapa."
+    };
+    pushTimeline("¡DUELO 1 VS 1!", "duelo");
+    t.quiz = null;
+    if (t.tiempo <= 0 && !t.plantado) { terminar(); return null; }
+    return t.actual;
+  }
+
+  function resolverDuelo(gano) {
+    const t = T();
+    if (!t.actual || !t.actual.duelo || t.terminado) return null;
+    const yo = t.equipoJ.find((u) => u.hp > 0);
+    const el = t.equipoIA.find((u) => u.hp > 0);
+    let texto, tier;
+    if (gano && el) {
+      matar(el, true);
+      t.duelo1v1 = true;
+      texto = `¡DUELO GANADO! ${el.nombre} cae delante tuyo. Quedás en pie con ${Math.max(0, Math.round(yo ? yo.hp : 0))} de HP.`;
+      tier = "ok";
+      t.stats.decisiones.push({ etiqueta: "DUELO 1V1", buena: true });
+    } else if (yo) {
+      golpear(yo, 55, false);
+      const muerto = yo.hp <= 0;
+      if (muerto) t.duelo1v1 = true;
+      texto = muerto
+        ? `${el ? el.nombre : "El rival"} te gana el duelo: caés eliminado.`
+        : `Fallás y ${el ? el.nombre : "el rival"} te castiga: quedás en ${Math.max(0, Math.round(yo.hp))} de HP. El duelo sigue: tenés que ganarlo.`;
+      tier = muerto ? "contra" : "fallo";
+      t.stats.decisiones.push({ etiqueta: "DUELO 1V1", buena: false });
+    } else {
+      return null;
+    }
+    pushTimeline(texto, gano ? "ok" : "mal");
+    const fin = chequearFin();
+    if (!fin && t.n >= MAX_MOMENTOS) dueloFinal();
+    return { tier, texto, fin: t.terminado };
+  }
 
   function elegirPregunta(dif) {
     const todas = window.SIEGE_DLE.preguntasTacticas || [];
@@ -305,28 +357,63 @@
   }
 
   function aplicarDmg(eq, cant, esRival) {
+    return golpear(unidadViva(eq), cant, esRival);
+  }
+
+  function golpear(u, cant, esRival) {
     const t = T();
-    const u = unidadViva(eq);
-    if (!u) return null;
+    if (!u || u.hp <= 0) return null;
     u.hp -= cant;
     t.stats.danio += cant;
-    if (u.hp <= 0) {
-      u.hp = 0;
-      if (esRival) { t.stats.bajasJ += 1; pushMuerte(u.nombre, "TU EQUIPO", "R"); }
-      else { t.stats.bajasR += 1; pushMuerte(u.nombre, "RIVAL", "J"); }
-      return { muerto: u };
-    }
+    if (u.hp <= 0) { matar(u, esRival); return { muerto: u }; }
     return { herido: u };
   }
 
-  function aplicarFx(fx, acc) {
+  function matar(u, esRival) {
     const t = T();
-    const c = ctx();
+    if (!u) return u;
+    u.hp = 0;
+    if (esRival) t.stats.bajasJ += 1;
+    else t.stats.bajasR += 1;
+    pushMuerte(u, esRival);
+    return u;
+  }
+
+  function pushMuerte(u, esRival) {
+    const t = T();
+    // Se guarda la identidad real: la UI muestra SU retrato, no un nombre suelto.
+    t.feed.unshift({ id: u.id, nombre: u.nombre, rival: !!esRival });
+    if (t.feed.length > 6) t.feed.pop();
+  }
+
+  // Reparto previo: se eligen ANTES las víctimas reales para que el texto nombre
+  // a quienes de verdad caen o quedan heridos (nada de "muere X y la kill es Y").
+  function prepararReparto(fx) {
+    const t = T();
     fx = fx || {};
-    for (let i = 0; i < (fx.killR || 0); i++) aplicarDmg(t.equipoIA, 200, true);
-    for (let i = 0; i < (fx.killJ || 0); i++) aplicarDmg(t.equipoJ, 200, false);
-    if (fx.dmgR) aplicarDmg(t.equipoIA, fx.dmgR, true);
-    if (fx.dmgJ) aplicarDmg(t.equipoJ, fx.dmgJ, false);
+    const tomar = (eq, n) => {
+      const v = eq.filter((u) => u.hp > 0);
+      const out = [];
+      for (let i = 0; i < (n || 0) && v.length; i++) {
+        out.push(v.splice(Math.floor(Math.random() * v.length), 1)[0]);
+      }
+      return out;
+    };
+    t.reparto = {
+      killR: tomar(t.equipoIA, fx.killR), killJ: tomar(t.equipoJ, fx.killJ),
+      dmgR: tomar(t.equipoIA, fx.dmgR ? 1 : 0), dmgJ: tomar(t.equipoJ, fx.dmgJ ? 1 : 0)
+    };
+    return t.reparto;
+  }
+
+  function aplicarFx(fx) {
+    const t = T();
+    fx = fx || {};
+    const rep = t.reparto || { killR: [], killJ: [], dmgR: [], dmgJ: [] };
+    rep.killR.forEach((u) => { if (u.hp > 0) matar(u, true); });
+    rep.killJ.forEach((u) => { if (u.hp > 0) matar(u, false); });
+    if (fx.dmgR && rep.dmgR[0] && rep.dmgR[0].hp > 0) golpear(rep.dmgR[0], fx.dmgR, true);
+    if (fx.dmgJ && rep.dmgJ[0] && rep.dmgJ[0].hp > 0) golpear(rep.dmgJ[0], fx.dmgJ, false);
     if (fx.intel) {
       t.intel = Math.max(0, Math.min(3, t.intel + fx.intel));
       if (fx.intel > 0) pushIntel("Dato confirmado en " + ST().sitio + ".");
@@ -341,11 +428,19 @@
     const t = T();
     const st = ST();
     const base = Array.isArray(texto) ? alAzar(texto) : texto;
-    const r = unidadViva(t.equipoIA);
-    const a = unidadViva(t.equipoJ);
+    // {rival}/{aliado} nombran SIEMPRE a los del reparto (los que de verdad caen o
+    // quedan heridos); si no hay reparto, a alguien vivo al azar como antes.
+    const rep = t.reparto || {};
+    const listR = [...(rep.killR || []), ...(rep.dmgR || [])];
+    const listA = [...(rep.killJ || []), ...(rep.dmgJ || [])];
+    const rV = unidadViva(t.equipoIA);
+    const aV = unidadViva(t.equipoJ);
+    let iR = 0, iA = 0;
+    const nomR = () => listR.length ? listR[(iR++) % listR.length].nombre : (rV ? rV.nombre : "un rival");
+    const nomA = () => listA.length ? listA[(iA++) % listA.length].nombre : (aV ? aV.nombre : "tu equipo");
     return base
-      .replace(/\{rival\}/g, r ? r.nombre : "un rival")
-      .replace(/\{aliado\}/g, a ? a.nombre : "tu equipo")
+      .replace(/\{rival\}/g, nomR)
+      .replace(/\{aliado\}/g, nomA)
       .replace(/\{sitio\}/g, st.sitio || "")
       .replace(/\{mapa\}/g, st.mapa ? st.mapa.nombre : "")
       .replace(/\{spawn\}/g, st.spawn || "")
@@ -376,7 +471,8 @@
     else tier = "fallo";
     const res = acc.resulta[tier] || acc.resulta.fallo;
     const variante = Array.isArray(res) ? alAzar(res) : res;
-    aplicarFx(variante.fx, acc);
+    prepararReparto(variante.fx);
+    aplicarFx(variante.fx);
     if (acc.consume && (tier === "fallo" || tier === "contra")) t.stats.utilMal += 1;
     // Memoria del rival: aprende tus hábitos.
     const mem = ST().memoria;
@@ -473,6 +569,7 @@
     while (!t.terminado && guard++ < 30) {
       if (t.quiz) responderQuiz(t.quiz.ok);
       if (!t.actual) break;
+      if (t.actual.duelo) { resolverDuelo(Math.random() < 0.5); if (!t.terminado) siguiente(); continue; }
       const scored = t.actual.accs.map((a) => {
         const { p } = calcular(a);
         return { a, s: p - riesgoNum(a.riesgo) * 0.04 };
@@ -491,7 +588,7 @@
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
   window.SIEGE_DLE.tactica = {
-    iniciar, momento, siguiente, resolverAccion, responderQuiz, cerrar, auto, calcular, nivelProb,
+    iniciar, momento, siguiente, resolverAccion, resolverDuelo, responderQuiz, cerrar, auto, calcular, nivelProb,
     formatoReloj, NOMBRES_REC, ctx,
     estado: () => ST().tactica
   };
