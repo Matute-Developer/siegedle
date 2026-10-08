@@ -37,6 +37,15 @@ button.mapa-card:hover { transform: translateY(-3px); border-color: var(--accent
 .mapa-card__thumb { width: 100%; height: 115px; background: #0b0e13; overflow: hidden; position: relative; }
 .mapa-card__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
 button.mapa-card:hover .mapa-card__thumb img { transform: scale(1.05); }
+/* Veto: los 5 en línea recta (uno debajo del otro), foto grande y solo el nombre. */
+.mapa-grid--veto { display: flex; flex-direction: column; gap: .85rem; margin-top: 1rem; }
+.mapa-grid--veto .mapa-card { width: 100%; }
+.mapa-card__thumb--grande { height: 210px; }
+.mapa-card__info--nombre { align-items: center; text-align: center; }
+.mapa-card__info--nombre strong { font-size: 1.25rem; letter-spacing: .06em; }
+@media (max-width: 700px) {
+  .mapa-card__thumb--grande { height: 150px; }
+}
 .mapa-card__info { display: flex; flex-direction: column; gap: .35rem; padding: .8rem .95rem; flex: 1; }
 .mapa-card strong { font-family: var(--font-d); font-size: 1.05rem; letter-spacing: .04em; line-height: 1.3; }
 .mapa-desc { font-size: .82rem; color: var(--muted); line-height: 1.45; }
@@ -81,22 +90,16 @@ button.mapa-card:hover .mapa-card__thumb img { transform: scale(1.05); }
   filter: drop-shadow(0 0 14px rgba(61,215,255,.3)); }
 .meme-bajada { font-family: var(--font-d); font-size: .78rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted2); }
 
-/* ---------- Panel "Ver mapas" ---------- */
-.mapas-lista { display: grid; gap: .8rem; margin-top: 1rem; }
-.mapa-ficha { display: flex; gap: 1rem; background: var(--bg2); border: 1px solid var(--line-soft); border-radius: 12px; padding: .85rem 1rem; align-items: flex-start; }
+/* ---------- Panel "Ver mapas": foto grande + nombre ---------- */
+.mapas-lista { display: grid; gap: .9rem; margin-top: 1rem; }
+.mapa-ficha--solo { display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; background: var(--bg2); border: 1px solid var(--line-soft); border-radius: 12px; }
+.mapa-ficha--solo .mapa-ficha__foto { width: 100%; height: 220px; background: #0b0e13; }
+.mapa-ficha--solo .mapa-ficha__foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mapa-ficha__nombre { padding: .8rem 1rem; text-align: center; }
+.mapa-ficha__nombre strong { font-family: var(--font-d); font-size: 1.35rem; letter-spacing: .06em; }
 @media (max-width: 650px) {
-  .mapa-ficha { flex-direction: column; }
-  .mapa-ficha__thumb { width: 100%; height: 120px; }
+  .mapa-ficha--solo .mapa-ficha__foto { height: 150px; }
 }
-.mapa-ficha__thumb { width: 140px; height: 90px; border-radius: 8px; overflow: hidden; flex-shrink: 0; background: #0b0e13; }
-.mapa-ficha__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.mapa-ficha__content { flex: 1; }
-.mapa-ficha__head { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
-.mapa-ficha__head strong { font-family: var(--font-d); font-size: 1.05rem; letter-spacing: .05em; }
-.mapa-dato { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin-top: .55rem; }
-.mapa-dato__label { width: 100%; font-size: .66rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted2); }
-.mapas-lista .pill { background: var(--bg); border: 1px solid var(--line-soft); color: var(--muted); }
-.mapas-lista .pill-acc { color: var(--accent); border-color: rgba(61,215,255,.45); background: rgba(61,215,255,.08); }
 
 /* ---------- Panel "Cómo se juega" ---------- */
 .reglas-lista { margin: 1rem 0 1.4rem; padding-left: 1.15rem; display: grid; gap: .6rem; }
