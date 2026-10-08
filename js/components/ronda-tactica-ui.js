@@ -57,6 +57,7 @@
 
   function comenzar() {
     detenerQTE();
+    detenerDuelo();
     pausaTac = false;
     pantalla = "momento";
     ultimoResultado = null;
@@ -77,6 +78,7 @@
     const s = document.getElementById("btn-saltar-tac");
     if (s) s.addEventListener("click", () => {
       detenerQTE();
+      detenerDuelo();
       Tch().auto();
       cerrarYResumir();
     });
@@ -142,7 +144,7 @@
     const op = porId(u.id);
     const vivo = u.hp > 0;
     return `<div class="tac-u${vivo ? "" : " muerto"}">
-      <span class="tac-u-ico">${op ? retrato(op) : "?"}</span>
+      <span class="tac-u-ico${vivo ? "" : " tac-muerto"}">${op ? retrato(op) : "?"}</span>
       <span class="tac-u-datos"><strong>${vivo ? u.nombre : "☠ " + u.nombre}</strong>
         <span class="tac-hp"><span class="tac-hp-bar ${hpColor(u.hp, max)}" style="width:${Math.max(0, Math.round(u.hp / max * 100))}%"></span></span>
         ${propia && vivo ? `<span class="tac-recs">${recs || "<span class='vacio'>sin utilidad</span>"}</span>` : ""}
@@ -162,7 +164,13 @@
     const el = document.getElementById("tac-killfeed");
     if (!el) return;
     el.innerHTML = `<h4>KILL FEED</h4>` + (t.feed.length
-      ? t.feed.map((f) => `<p class="tac-kill${f.rival ? " rival" : ""}"><span>${f.rival ? "RIVAL" : "TU EQUIPO"}</span><strong>${f.b}</strong></p>`).join("")
+      ? t.feed.map((f) => {
+        const op = porId(f.id);
+        return `<p class="tac-kill${f.rival ? " rival" : ""}">
+          <span class="tac-kill-lado">${f.rival ? "RIVAL" : "TU EQUIPO"}</span>
+          <span class="tac-muerto">${op ? retrato(op) : "?"}</span>
+          <strong>☠ ${f.nombre}</strong></p>`;
+      }).join("")
       : `<p class="vacio">Sin bajas todavía.</p>`);
   }
 
@@ -182,8 +190,12 @@
     const zona = document.getElementById("tac-zona");
     if (!zona) return;
     detenerQTE();
+    detenerDuelo();
     if (pantalla === "resumen" && resumen) { zona.innerHTML = htmlResumen(t); conectarZona(zona); return; }
     if (pantalla === "resultado" && ultimoResultado) { zona.innerHTML = htmlResultado(); conectarZona(zona); return; }
+    if (t.actual && t.actual.duelo && pantalla === "momento") {
+      zona.innerHTML = htmlDuelo(t); conectarZona(zona); arrancarDuelo(); return;
+    }
     if (t.quiz && pantalla === "momento") { zona.innerHTML = htmlQuiz(t.quiz); conectarZona(zona); return; }
     if (ultimoQuiz && pantalla === "momento") { zona.innerHTML = htmlQuizRes(); conectarZona(zona); return; }
     if (!t.actual) { cerrarYResumir(); return; }
@@ -264,6 +276,75 @@
     </div>`;
   }
 
+  // ---------- DUELO 1V1 ----------
+  // Las fotos de los dos que quedan + minijuego de reflejos: dispará en la zona verde.
+  let dueloTimer = null;
+
+  function detenerDuelo() {
+    if (dueloTimer) { clearInterval(dueloTimer); dueloTimer = null; }
+  }
+
+  function htmlDuelo(t) {
+    const yo = t.equipoJ.find((u) => u.hp > 0);
+    const el = t.equipoIA.find((u) => u.hp > 0);
+    const opYo = yo ? porId(yo.id) : null;
+    const opEl = el ? porId(el.id) : null;
+    const zona = 12 + Math.floor(Math.random() * 60);
+    const ancho = 15;
+    return `<div class="decision-box tac-duelo">
+      <h3>⚔ DUELO 1 VS 1</h3>
+      <p class="tac-texto">Quedan ustedes dos. Dispará cuando el marcador pase por la <strong>zona verde</strong>. Si fallás y sobrevivís, el duelo se repite.</p>
+      <div class="tac-vs">
+        <div class="tac-vs-lado"><span class="tac-vs-foto">${opYo ? retrato(opYo) : "?"}</span>
+          <strong>${yo ? yo.nombre : "—"}</strong><small>${yo ? Math.max(0, Math.round(yo.hp)) : 0} HP</small></div>
+        <span class="tac-vs-mid">VS</span>
+        <div class="tac-vs-lado"><span class="tac-vs-foto">${opEl ? retrato(opEl) : "?"}</span>
+          <strong>${el ? el.nombre : "—"}</strong><small>HP oculta</small></div>
+      </div>
+      <div class="tac-aim" id="tac-aim" data-zona="${zona}" data-ancho="${ancho}">
+        <div class="tac-aim-zona" style="left:${zona}%;width:${ancho}%"></div>
+        <div class="tac-aim-cursor" style="left:0%"></div>
+      </div>
+      <button class="btn btn-primary btn-block" data-duelo="fuego" type="button">🔫 DISPARAR</button>
+      <div class="tac-qte" id="tac-duelo-tiempo"><span></span></div>
+    </div>`;
+  }
+
+  function arrancarDuelo() {
+    detenerDuelo();
+    const aim = document.getElementById("tac-aim");
+    if (!aim) return;
+    const cursor = aim.querySelector(".tac-aim-cursor");
+    const zona = Number(aim.dataset.zona), ancho = Number(aim.dataset.ancho);
+    const bar = document.querySelector("#tac-duelo-tiempo span");
+    let pos = 0, dir = 1, ticks = 0;
+    const total = 200; // 8 segundos a 40ms: si no disparás, dispara él
+    dueloTimer = setInterval(() => {
+      if (!document.getElementById("tac-aim")) { detenerDuelo(); return; }
+      if (pausaTac) return;
+      pos += dir * 2.2;
+      if (pos >= 100) { pos = 100; dir = -1; }
+      if (pos <= 0) { pos = 0; dir = 1; }
+      if (cursor) cursor.style.left = pos + "%";
+      ticks += 1;
+      if (bar) bar.style.width = Math.max(0, 100 - ticks / total * 100) + "%";
+      if (ticks >= total) { detenerDuelo(); finDuelo(false); }
+    }, 40);
+    aim._disparo = () => {
+      const enZona = pos >= zona && pos <= zona + ancho;
+      detenerDuelo();
+      finDuelo(enZona);
+    };
+  }
+
+  function finDuelo(gano) {
+    const res = Tch().resolverDuelo(gano);
+    if (!res) return;
+    ultimoResultado = { tier: res.tier, texto: res.texto, desglose: [] };
+    pantalla = "resultado";
+    pintar();
+  }
+
   const TIER_TXT = { crit: "¡PERFECTO!", ok: "SALE BIEN", parcial: "A MEDIAS", fallo: "FALLA", contra: "SE VUELVE EN CONTRA" };
 
   function htmlResultado() {
@@ -330,6 +411,7 @@
   function conectarZona(zona) {
     zona.querySelectorAll("[data-acc]").forEach((b) => b.addEventListener("click", () => {
       detenerQTE();
+      detenerDuelo();
       window.SIEGE_DLE.partidaUI.accion(b.dataset.acc);
     }));
     zona.querySelectorAll("[data-quiz]").forEach((b) => b.addEventListener("click", () => {
@@ -343,6 +425,10 @@
       ultimoResultado = res;
       pantalla = "resultado";
       pintar();
+    }));
+    zona.querySelectorAll("[data-duelo]").forEach((b) => b.addEventListener("click", () => {
+      const aim = document.getElementById("tac-aim");
+      if (aim && aim._disparo) aim._disparo();
     }));
     zona.querySelectorAll("[data-tac-cont]").forEach((b) => b.addEventListener("click", () => {
       ultimoResultado = null;
