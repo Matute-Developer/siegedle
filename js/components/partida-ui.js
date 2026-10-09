@@ -225,7 +225,7 @@
       <ol class="reglas-lista">
         <li><strong>Veto de mapa:</strong> salen <strong>5 mapas al azar</strong>. Vos baneás 1 y el rival banea 1.</li>
         <li><strong>Sorteo:</strong> entre los 3 que quedan, el mapa que se juega sale <strong>totalmente al azar</strong>.</li>
-        <li><strong>Punto y arranque:</strong> si <strong>defendés</strong> elegís el punto de bomba (💣); si <strong>atacás</strong> elegís el punto de arranque (🚀) y el punto lo pone el rival. El punto donde ganaste queda <strong>bloqueado</strong> para el resto de la partida.</li>
+        <li><strong>Punto y arranque:</strong> si <strong>defendés</strong> elegís el punto de bomba (💣); si <strong>atacás</strong> elegís el punto de arranque (🚀) y el punto lo pone el rival. El punto donde ganaste queda <strong>bloqueado</strong> mientras juegues del mismo lado; si perdiste, podés repetirlo o irte a otro. Al <strong>cambiar de lado</strong> (ronda 4 u overtime) los puntos se <strong>liberan</strong> y elegís cualquiera.</li>
         <li><strong>Bans:</strong> cada ronda baneás 1 rival y el rival banea 1 tuyo. Los baneos se <strong>acumulan</strong> en toda la partida.</li>
         <li><strong>Draft:</strong> armás tu equipo de <strong>5</strong> con el bando que te toca en la ronda.</li>
         <li><strong>Ronda táctica:</strong> jugás la ronda <strong>momento a momento</strong> con reloj (2:45),
@@ -316,7 +316,8 @@
         <p class="muted" style="margin-top:.8rem">Cada ronda tiene dos cosas: el <strong>punto de bomba</strong> (lo fija
           <strong>siempre el defensor</strong>: si defendés lo elegís vos, si atacás lo pone el rival) y el <strong>punto de
           arranque</strong> del atacante (🚀: si atacás lo elegís vos, si defendés lo pone el rival). El punto donde ganaste
-          queda <strong>bloqueado</strong> para el resto de la partida; si perdiste, se puede volver a elegir.</p>
+          queda <strong>bloqueado</strong> mientras juegues del mismo lado; si perdiste, se puede volver a elegir.
+          Al cambiar de lado se liberan todos los puntos.</p>
         <p class="muted">Esta partida se empieza <strong>${st.empieza === "ataque" ? "atacando" : "defendiendo"}</strong> (se alterna entre partidas). El rival ya tiene su plan.</p>
         <button class="btn btn-primary btn-block" data-acc="a-sitio" type="button">Comenzar ronda 1</button>
       </div>`;
@@ -385,8 +386,8 @@
           El rival ya eligió desde dónde entra.</p>
         <div class="punto-rival">🚀 ${st.spawn || "…"}</div>
         <div class="sitio-grid">${tarjetas}</div>
-        <p class="muted sitio-regla">Ganar en un punto lo <strong>bloquea</strong> y no se vuelve a jugar en esta partida.
-          Perder deja el punto disponible para volver a pickearlo.</p>
+        <p class="muted sitio-regla">Ganar en un punto lo <strong>bloquea</strong> mientras juegues de este lado.
+          Perder deja el punto disponible para volver a pickearlo o irte a otro.</p>
         ${bloqueados.length ? `<p class="muted">Bloqueados: <strong>${bloqueados.join(" · ")}</strong></p>` : ""}
         <button class="btn btn-primary btn-block" id="btn-elegir-sitio" data-acc="a-elegir-sitio" type="button" ${seleccionSitio === null ? "disabled" : ""}>Elegir punto y continuar</button>
       </div>`;
@@ -682,7 +683,10 @@
     }
     else if (cual === "a-sitio") {
       // La ronda arranca con punto y arranque: cada uno lo fija el bando que le corresponde.
-      P().prepararRonda();
+      const cambioDeLado = P().prepararRonda();
+      if (cambioDeLado) {
+        window.SIEGE_DLE.toast.mostrar("Cambio de lado: puntos liberados, podés elegir cualquiera.", "success");
+      }
       seleccionSitio = null;
       seleccionSpawn = null;
       st.fase = "sitio";
