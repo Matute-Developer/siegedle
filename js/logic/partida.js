@@ -19,10 +19,13 @@
   // fase: inicio -> vetoMapa -> sorteo -> mapa -> sitio -> bans -> draft -> previa -> ronda -> fin.
   // mapasCandidatos: 5 ids para el veto; vetoMapaJ/vetoMapaRival: un id por equipo.
   // sitio: punto de bomba de la ronda (lo fija el defensor), sitioIdx: su índice en mapa.sitios,
-  // sitiosGanados: índices de los puntos donde el jugador ganó (quedan bloqueados),
+  // sitiosGanados: índices de los puntos donde el jugador ganó con el lado actual
+  // (quedan bloqueados hasta que se cambia de lado), ladoUltimo: lado de la última
+  // ronda jugada, para detectar el cambio de bando y liberar los puntos.
   // spawn: punto de arranque de la ronda (lo fija el atacante).
   const state = {
     fase: "inicio", mapa: null, sitio: null, sitioIdx: null, sitiosGanados: [], spawn: null,
+    ladoUltimo: null,
     mapasCandidatos: [], vetoMapaJ: null, vetoMapaRival: null, rerollMapasUsado: false,
     estiloIA: "equilibrado", empieza: "ataque",
     memoria: { c4: 0, agresivo: 0, pasivo: 0 }, // lo que el rival aprendió de vos en la partida
@@ -172,6 +175,7 @@
     state.rerollMapasUsado = false;
     state.mapa = null;
     state.sitio = null; state.sitioIdx = null; state.sitiosGanados = [];
+    state.ladoUltimo = null;
     state.spawn = null;
     state.vetados = [];
     state.memoria = { c4: 0, agresivo: 0, pasivo: 0 };
@@ -466,7 +470,7 @@
     state.ronda.resultado = ganada ? "victoria" : "derrota";
     if (ganada) {
       state.puntosJ += 1;
-      // Punto ganado: queda bloqueado y no se vuelve a jugar en esta partida.
+      // Punto ganado: queda bloqueado mientras se juegue del mismo lado (se libera al cambiar de bando).
       if (state.sitioIdx !== null && !state.sitiosGanados.includes(state.sitioIdx)) {
         state.sitiosGanados.push(state.sitioIdx);
       }
@@ -484,10 +488,21 @@
   }
 
   function prepararRonda() {
-    // Limpia equipos, punto y arranque de la ronda anterior; los vetos y los puntos ganados se conservan.
+    // Limpia equipos, punto y arranque de la ronda anterior; los vetos se conservan.
+    // Los puntos ganados se conservan mientras no se cambie de lado: al cambiar de
+    // bando (ej. ronda 4 u overtime) se liberan y se puede elegir cualquiera.
+    // Devuelve true si hubo cambio de lado (para avisar en la UI).
+    const lado = ladoProximo();
+    let cambioDeLado = false;
+    if (state.ladoUltimo !== null && state.ladoUltimo !== lado) {
+      state.sitiosGanados = [];
+      cambioDeLado = true;
+    }
+    state.ladoUltimo = lado;
     state.equipoJ = []; state.equipoIA = []; state.opciones = [];
     state.sitio = null; state.sitioIdx = null;
     state.spawn = null;
+    return cambioDeLado;
   }
 
   window.SIEGE_DLE = window.SIEGE_DLE || {};
