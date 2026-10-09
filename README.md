@@ -1,4 +1,4 @@
-# SIEGE DLE — v0.25.0 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
+# SIEGE DLE — v0.25.1 (adivinanza + modo Partida con rondas tácticas interactivas + fichas con retrato)
 
 Juego táctico de deducción inspirado en Rainbow Six Siege. Interfaz 100 % en español.
 Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
@@ -48,7 +48,9 @@ Proyecto de fans dedicado al clan TKOA. Sin afiliación con Ubisoft.
   Rascacielos, Parque de Atracciones, Villa, Oregón, Canal, Outback y Llanuras Esmeralda.
 - **Punto de bomba y punto de arranque**: al elegir el punto a defender o el arranque a entrar,
   el nombre del mapa aparece destacado a la derecha (ej. `Elegí el punto a defender       CHALET`).
-  El punto donde ganaste una ronda queda bloqueado para el resto de la partida; si perdiste ahí, sigue disponible.
+  El punto donde ganaste una ronda queda bloqueado mientras juegues del mismo lado; si perdiste ahí,
+  sigue disponible para repetirlo o irte a otro. Al **cambiar de lado** (ronda 4 u overtime) los puntos
+  se **liberan** y podés elegir cualquiera (`state.ladoUltimo` en `prepararRonda()`).
 - Cada ronda: vos baneás 1 del bando rival y el rival banea 1 del tuyo. Los baneos valen para toda la partida.
   El baneo se marca y se confirma aparte; hay un reloj global de 30 s para todo el baneo y otro global de 90 s
   para los 5 picks (no se reinicia por personaje). Si se acaban, el sistema termina solo.
